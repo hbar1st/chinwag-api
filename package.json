@@ -1,0 +1,69 @@
+{
+  "name": "chinwag-api",
+  "version": "1.0.0",
+  "description": "A messaging app",
+  "homepage": "https://github.com/hbar1st/chinwag-api#readme",
+  "bugs": {
+    "url": "https://github.com/hbar1st/chinwag-api/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hbar1st/chinwag-api.git"
+  },
+  "license": "ISC",
+  "author": "hbar1st",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "npx nodemon src/index.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "db:start": "docker compose -f ./docker-compose.yml up -d",
+    "db:stop": "docker compose -f ./docker-compose.yml down",
+    "db:logs": "docker compose -f ./docker-compose.yml logs -f db",
+    "db:shell": "bash -c 'source .env && PGPASSWORD=\"$PGPASSWORD\" docker compose exec db psql -U \"$PGUSER\" -d \"$PGDATABASE\"'",
+    "db:setup": "bash -c 'source .env && PGPASSWORD=\"$PGPASSWORD\" psql -h \"$PG_HOST\" -p \"$PGPORT\" -U \"$PGUSER\" -d \"$PGDATABASE\" < ./src/db/setup-tables.sql'",
+    "clean-n-dev": "npm run lint && npm run db:start && npm run db:setup && node src/db/populateTables.js && npm start",
+    "dev": "npm run db:start && npm start",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "workspaces": [
+    "apps/*"
+  ],
+  "devDependencies": {
+    "@babel/core": "7.28.5",
+    "@babel/preset-env": "7.28.5",
+    "@eslint/css": "^0.14.1",
+    "@eslint/js": "^9.39.2",
+    "@eslint/json": "^1.0.0",
+    "@eslint/markdown": "^7.5.1",
+    "babel-jest": "30.2.0",
+    "ejs-lint": "2.0.1",
+    "eslint": "9.39.2",
+    "globals": "^17.3.0",
+    "jest": "^30.2.0",
+    "nodemon": "^3.1.11",
+    "supertest": "^7.2.2",
+    "vitest": "4.0.16"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0",
+    "express-validator": "^7.3.1",
+    "jsonwebtoken": "^9.0.3",
+    "nodemon": "3.1.11",
+    "passport": "^0.7.0",
+    "passport-github2": "^0.1.12",
+    "passport-jwt": "^4.0.1",
+    "pg": "^8.18.0",
+    "winston": "^3.19.0"
+  },
+  "keywords": [
+    "Node",
+    "Expess",
+    "PostgreSQL"
+  ]
+}
