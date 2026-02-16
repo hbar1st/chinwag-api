@@ -65,6 +65,8 @@ Once phase 1 is done, contributions may be accepted if an issue is opened and tr
 - POST /message [in the form: the recipient id, the message, any images]
 - PUT /message/:id [to edit an existing message. Can change the message or the image(s)]
 - DELETE /message/:id [can delete one's own message. IF it is a REPLY, then the form will include a reply field with replied to message's id]
+- GET /chat [gets all chat for the current user]
+- DELETE /chat/:id  [deletes a specific chat]
 - GET /chat/:id/message/ [gets all the messages for this user in a certain chat]
 - GET /chat/:id/message/unread_count [is a count of every single message this user got sent filtered to the ones that are unread in the chat]
 - GET /message/unread_count [gets a count of every single new message this user received]
