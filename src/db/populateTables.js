@@ -14,4 +14,6 @@ import url from "url";
 
 // needed to hash the password value
 import bcrypt from "bcrypt";
-import logger from "../utils/logger.js";
+import { logger} from "./utils/logger.js";
+
+

@@ -1,7 +1,6 @@
 import "dotenv/config";
 import { app } from "./serverSetup.js";
-import logger from "./utils/logger.js";
-
+import { logger } from "./utils/logger.js";
 const port = process.env.PORT || 3000;
 
 const server = app.listen(port, () => {

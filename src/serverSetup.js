@@ -5,7 +5,7 @@ import path from "node:path";
 import url from "node:url";
 import "dotenv/config";
 import { env } from "node:process";
-import logger from "./utils/logger.js";
+import { logger } from "./utils/logger.js";
 import passport from "./middleware/passport.js";
 
 import AppError from "./errors/AppError.js";
@@ -15,7 +15,7 @@ import userRouter from "./routers/userRouter.js";
 import messageRouter from "./routers/messageRouter.js";
 
 const VERSION = "v1"
-const prefix = `/${VERSION}`;
+export const prefix = `/${VERSION}`;
 
 if (!env.JWT_SECRET) {
   logger.error("found no jwt secret in .env, so must create one");

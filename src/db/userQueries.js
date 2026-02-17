@@ -1,5 +1,7 @@
 import { pool } from "./pool.js";
-import logger from "../utils/logger.js";
+import { logger } from "../utils/logger.js";
+
+
 import AppError from "../errors/AppError.js";
 
 export async function findOtherUser(userId, email) {

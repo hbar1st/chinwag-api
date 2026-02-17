@@ -1,2 +1,2 @@
 import { pool } from "./pool.js";
-import logger from "../utils/logger.js";
+import { logger } from "../src/utils/logger.js";

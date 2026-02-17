@@ -4,7 +4,7 @@ import { body, param, checkExact } from "express-validator";
 import ValidationError from "../errors/ValidationError.js";
 import AuthError from "../errors/AuthError.js";
 
-import logger from "../utils/logger.js";
+import { logger} from "../utils/logger.js";
 
 // needed to compare hashed passwords
 import bcrypt from "bcrypt";

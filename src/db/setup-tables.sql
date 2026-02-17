@@ -15,7 +15,7 @@ CREATE TABLE chinwag.users (
   avatar_url text,
   last_active timestamptz NOT NULL,
 
-  UNIQUE (id, email)
+  UNIQUE (email)
 );
 
 CREATE TABLE chinwag.passwords (

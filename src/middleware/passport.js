@@ -1,6 +1,6 @@
 import passport from "passport";
 import AuthError from "../errors/AuthError.js";
-import logger from "../utils/logger.js";
+import { logger} from "../utils/logger.js";
 
 import crypto from "node:crypto";
 
