@@ -1,5 +1,7 @@
 import winston, { format } from "winston";
 const { combine, errors, printf, colorize, timestamp } = format;
+import "dotenv/config";
+import { env } from "node:process";
 
 const logLevels = {
   error: 0,
@@ -12,10 +14,6 @@ const logFormat = printf(({ level, message, timestamp, stack, ...other }) => {
 
   if (Object.keys(other).length > 0) {
     log += `\n--\n${JSON.stringify(other, null, 2)}\n--`;
-  } else {
-    if (other) {
-      log += "\n logged object has no keys"
-    }
   }
 
   if (stack) {
@@ -25,17 +23,11 @@ const logFormat = printf(({ level, message, timestamp, stack, ...other }) => {
   return log;
 });
 
-const logger = winston.createLogger({
-  levels: logLevels,
-  level: "info",
-  format: combine(
-    timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
-    colorize(),
-    errors({ stack: true }),
-    logFormat,
-  ),
-  transports: [
+// This function creates transports based on silent mode
+function createTransports(silent) {
+  return [
     new winston.transports.Console({
+      silent,
       format: combine(
         timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
         errors({ stack: true }),
@@ -44,20 +36,37 @@ const logger = winston.createLogger({
       ),
     }),
 
-    new winston.transports.File({ filename: "logs/error.log", level: "warn" }), // high priority errors
-    new winston.transports.File({ filename: "logs/combined.log" }),
-  ],
-});
+    new winston.transports.File({
+      filename: "logs/error.log",
+      level: "warn",
+      silent,
+    }),
 
-//
-// If we're not in production then log to the `console` with the format:
-// `${info.level}: ${info.message} JSON.stringify({ ...rest }) `
-//
-/*
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(new winston.transports.Console({
-    format: winston.format.simple(),
-  }));
+    new winston.transports.File({
+      filename: "logs/combined.log",
+      silent,
+    }),
+  ];
 }
-*/
+
+// Export a function that builds the logger
+export function createLogger(silent) {
+  // eslint-disable-next-line no-console
+  console.log("creating a new logger with silent set to : ", silent)
+  return winston.createLogger({
+    levels: logLevels,
+    level: "info",
+    format: combine(
+      timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
+      colorize(),
+      errors({ stack: true }),
+      logFormat,
+    ),
+    transports: createTransports(silent),
+  });
+}
+
+// Default logger for production/dev
+
+export const logger = createLogger();
 export default logger;

@@ -1,0 +1,102 @@
+// Use DBML to define your database structure
+// Docs: https://dbml.dbdiagram.io/docs
+
+Project chinwag_app {
+  database_type: 'PostgreSQL'
+  Note: 'ChinWag Messaging App'
+}
+
+Table chinwag.users {
+  id integer [pk, increment]
+  email varchar(50) [pk]
+  nickname varchar(25) [not null]
+  username varchar(25) [not null]
+  avatar_url  text [note: "use avatar from MUI if empty"]
+  last_active timetstamptz [note: "when user was last active"]
+}
+
+Table chinwag.friends {
+  id integer [pk, increment]
+  user_id_1 integer [not null, ref: <> chinwag.users.id]
+  user_id_2 integer [not null, ref: <> chinwag.users.id, note: "cannot be friends with myself though"]
+
+  indexes {
+    (user_id_1, user_id_2) [pk]
+  }
+}
+
+Table chinwag.passwords {
+  id integer [pk, ref: - chinwag.users.id]
+  password varchar(255) [not null]
+}
+
+// chat can be 1-1 or group
+Table chinwag.chats {
+  id integer [pk, increment]
+  icon_url text [note: "use icon from MUI if empty"]
+  name varchar(75) [not null]
+  desc text [not null]
+  created_at timestamptz [not null, default: `now()`] 
+  updated_at timestamptz [note: "default is the same value as created_at?"]
+}
+
+Table chinwag.chat_members {
+  id integer [pk, increment]
+  chat_id integer [not null, ref: <> chinwag.chats.id]
+  user_id integer [not null, ref: <> chinwag.users.id]
+
+  indexes {
+    (chat_id,user_id) [unique]
+  }
+}
+
+enum chinwag.reaction {
+  thumbs_up [note: "👍"]
+  cry [note: "😢"]
+  love [note: "❤️"]
+  laugh [note: "😄"]
+  strong  [note: "💪"]
+  celebrate [note: "🥳"]
+}
+
+// Future concern: how to limit total number of reactions per message?
+Table chinwag.message_reaction {
+  reaction chinwag.reaction [not null]
+  user_id  integer [not null, ref: <> chinwag.users.id]
+  message_id integer [not null, ref: <> chinwag.messages.id]
+
+  indexes {
+    (user_id, message_id) [pk, note:"each user can make exactly one reaction per message"]
+  }
+}
+
+Table chinwag.images {
+  id integer [pk, note: "cloudinary public key"]
+  url text [not null, note: "link to the cloudinary image"]
+  message_id integer [not null, ref: > chinwag.messages.id]
+  created_at timestamptz [note: "needed in case we need to limit messages in a time period?"]
+}
+
+// Future concern: how to limit # of images in a message?
+Table chinwag.message_image {
+  id integer [pk, increment]
+  image_id integer [not null, ref: < chinwag.images.id]
+  message_id integer [not null, ref: <> chinwag.messages.id]
+
+  indexes {
+    (image_id, message_id) [unique]
+  }
+}
+
+Table chinwag.messages {
+  id integer [pk, increment]
+  reply_to integer [ref: > chinwag.messages.id]
+  content varchar(1000) [not null]
+  sent_at timestamptz [not null, default: `now()`]
+  delivered_at timestamptz
+  updated_at  timestamptz
+  read_at timestamptz
+  deleted boolean [note: "if deleted, we don't really delete it, just flag it"]
+  chat_id int [ref: <> chinwag.chats.id]
+  author_id integer [not null, ref: <> chinwag.users.id]
+}
