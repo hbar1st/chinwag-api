@@ -1,8 +1,7 @@
 /* eslint-disable no-console */
 
 import { pool } from "./pool.js";
-import { getLogger } from "./utils/logger.js";
-const logger = getLogger(); "../utils/logger.js";
+import { logger } from "../utils/logger.js";
 
 const SCHEMA_NAME = "chinwag";
 
@@ -17,20 +16,15 @@ export async function clearAllTables() {
   try {
     const { rows } = await pool.query(
       `SELECT
-    table_schema AS schema_name,
-    table_name AS relation_name,
-    table_type AS relation_type
+    table_name AS relation_name
 FROM
     information_schema.tables
 WHERE
-    table_schema = '${SCHEMA_NAME}'
-ORDER BY
-    table_schema,
-    table_name;`,
+    table_schema = '${SCHEMA_NAME}';`,
     );
 
     for (const row of rows) {
-      const table = `${row.schema_name}.${row.relation_name}`;
+      const table = `${SCHEMA_NAME}.${row.relation_name}`;
       console.log(`clearing rows in: ${table}`);
       await pool.query(`TRUNCATE TABLE ${table} CASCADE;`);
     }

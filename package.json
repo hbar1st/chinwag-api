@@ -26,7 +26,7 @@
     "clean-n-dev": "npm run lint && npm run db:start && npm run db:setup && node src/db/populateTables.js && npm start",
     "clean-n-test": "npm run db:start && npm run db:setup && node src/db/populateTables.js && npm start",
     "dev": "npm run db:start && npm start",
-    "test": "NODE_ENV=test npm run db:resetAndSeed && vitest --disableConsoleIntercept --hideSkippedTests --bail 1",
+    "test": "NODE_ENV=test npm run db:resetAndSeed && vitest --mode test --disableConsoleIntercept --hideSkippedTests --bail 1",
     "test:debug": "NODE_ENV=test npm run db:clean-n-test && vitest --inspect --test-timeout=0 --no-file-parallelism --hideSkippedTests --disableConsoleIntercept"
   },
   "workspaces": [

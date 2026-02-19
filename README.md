@@ -76,4 +76,6 @@ Once phase 1 is done, contributions may be accepted if an issue is opened and tr
 
 - [ ] Allow adding images in chat
 - [ ] Create a friends list that shows online or offline status
+GET /user/:id/friend [lists all the friends and their last active timestamps so the client can decide how to display online/offline status themselves]
+
 - [ ] Allow group chats between friends

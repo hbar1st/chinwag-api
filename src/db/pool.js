@@ -2,10 +2,8 @@ import { Pool } from "pg";
 import { env } from "node:process";
 import { logger} from "../utils/logger.js";
 
-const DATABASE_URL = `postgresql://${env.PGUSER}:${env.PGPASSWORD}@${env.PG_HOST}:${env.PGPORT}/${env.PGDATABASE}`;
+//const DATABASE_URL = `postgresql://${env.PGUSER}:${env.PGPASSWORD}@${env.PGHOST}:${env.PGPORT}/${env.PGDATABASE}`;
 
-const connectionString = DATABASE_URL;
-logger.info(`connection string: ${connectionString}`);
 
 // Add logging to see what's happening
 logger.info("Environment check in db/init.ts:", {
@@ -15,27 +13,28 @@ logger.info("Environment check in db/init.ts:", {
 });
 
 const dbConfig =
-  env.NODE_ENV === "production"
-    ? {
-        // Note for deployment on Railway, these environment variables need to be shared from the database service into the nodejs app block
-        // this is a manual process that must be done in the Railway dashboard (via their gui)
-        connectionString: env.DATABASE_URL,
-        ssl: { rejectUnauthorized: false },
-      }
-    : env.NODE_ENV === "test"
-      ? {
-          database: env.PGTEST_DATABASE,
-          host: env.PGHOST,
-          user: env.PGUSER,
-          password: env.PGPASSWORD,
-          port: env.PGPORT,
-        }
-      : {
-          database: env.PGDATABASE,
-          host: env.PGHOST,
-          user: env.PGUSER,
-          password: env.PGPASSWORD,
-          port: env.PGPORT,
-        };
+env.NODE_ENV === "production"
+? {
+  // Note for deployment on Railway, these environment variables need to be shared from the database service into the nodejs app block
+  // this is a manual process that must be done in the Railway dashboard (via their gui)
+  connectionString: env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+}
+: (env.NODE_ENV === "test")
+? {
+  database: env.PGDATABASE_TEST,
+  host: env.PGHOST,
+  user: env.PGUSER,
+  password: env.PGPASSWORD,
+  port: env.PGPORT_TEST,
+} :
+{
+  database: env.PGDATABASE,
+  host: env.PGHOST,
+  user: env.PGUSER,
+  password: env.PGPASSWORD,
+  port: env.PGPORT,
+};
 
+logger.info("dbConfig: ",dbConfig)
 export const pool = new Pool(dbConfig);

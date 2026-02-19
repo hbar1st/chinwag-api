@@ -4,11 +4,12 @@ import { describe, test, expect, afterEach, beforeAll, beforeEach } from "vitest
 import request from "supertest";
 
 import { logger } from "../src/utils/logger.js";
+import { pool } from "../src/db/pool.js";
 
-
+const STD_VALIDATION_MSG = "Action has failed due to some validation errors";
 let app;
 let prefix;
-const route = `${prefix}/user`;
+let route;
 
 
 beforeEach(() => {
@@ -31,6 +32,7 @@ beforeAll(async () => {
   const mod = await import("../src/serverSetup.js");
   app = mod.app;
   prefix = mod.prefix;
+  route = `${prefix}/user`;
 });
 
 
@@ -100,31 +102,93 @@ describe("Content Type and Headers", () => {
 
 describe("Signup and Login", () => {
   describe("Signup Validation", () => {
-
-    describe("email checks", () => {
-      test("Unique email check", async () => {
-        /*
-       const res = await request(app)
-          .post(`${route}/signup`)
+    
+    test("missing body checks", async () => {
+      const res = await request(app).post(`${route}/signup`);
+      
+      expect(res.status).toEqual(400);
+      expect(res.body.timestamp).toBeDefined();
+      expect(res.body.message).toEqual(STD_VALIDATION_MSG);
+      expect(res.body.data).toBeDefined();
+      expect(res.body.data).toBeInstanceOf(Array);
+      expect(res.body.data.length).toBeGreaterThan(0);
+    });
+    
+    describe("Email checks", () => {
+      
+      test("Valid email check", async () => {
+        const res = await request(app)
+        .post(`${route}/signup`)
+        .set("Accept", "application/json")
+        .send({ email: "invalid" });
         
-        expect(res.status).toEqual(404);
-        expect(res.body.status).toEqual("fail");
-        */
+        
+        expect(res.headers["content-type"]).toMatch(/json/);
+        expect(res.status).toEqual(400);        
+        
+        const validationErr = {
+          type: "field",
+          value: "invalid",
+          msg: "Provide a valid email address.",
+          path: "email",
+          location: "body",
+        };
+        
+        expect(res.body).toEqual({
+          timestamp: expect.anything(),
+          message: STD_VALIDATION_MSG,
+          data: expect.arrayContaining([validationErr]),
+        });
+        
       });
-      test("Valid email check", () => {
-
+      
+      test("Unique email check", async () => {
+        const sql =
+        "INSERT INTO chinwag.users (username,email,nickname) VALUES ('notunique','notunique@email.com','notunique');";
+        try {
+          
+          // start by seeding the table first
+          await pool.query(sql);
+          
+          // then test with non-unique email
+          const res = await request(app)
+          .post(`${route}/signup`)
+          .set("Accept", "application/json")
+          .send({ email: "notunique@email.com" });
+          
+          
+          expect(res.headers["content-type"]).toMatch(/json/);
+          expect(res.status).toEqual(400);
+          
+          const validationErr = {
+            type: "field",
+            value: "invalid",
+            msg: "Provide a valid email address.",
+            path: "email",
+            location: "body",
+          };
+          
+          expect(res.body).toEqual({
+            timestamp: expect.toBeDefined(),
+            message: expect.toEqual(STD_VALIDATION_MSG),
+            data: expect.toBeInstanceOf(Array).arrayContaining(validationErr)
+          });
+        } catch (err) {
+          logger.error(err);
+          throw err;
+        }
       });
     });
-
+    
     describe("username checks", () => {
       test("Unique username check", () => {
-
+        
       })
       test("username length check", () => {
-
+        
       })
     });
-
+    
     describe("")
   })
 })
