@@ -39,7 +39,9 @@ userRouter
     userValidator.validateOptionalUserFields,
     handleExpressValidationErrors,
     userController.updateUser
-)
+  );
+  
+  userRouter.route("/:id")
   .get(
     passport.authenticate("jwt", { session: false }),
     userController.getUser,
