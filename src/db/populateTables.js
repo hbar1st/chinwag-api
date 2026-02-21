@@ -3,7 +3,7 @@
 /*
  !!! before running this code, we need to create the tables from setup-tables.sql !!! (npm run db:setup will do that)
 */
-
+/*
 import { pool } from "./pool.js";
 
 import fs from "fs";
@@ -17,3 +17,4 @@ import bcrypt from "bcrypt";
 import { logger} from "./utils/logger.js";
 
 
+*/

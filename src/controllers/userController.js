@@ -18,11 +18,12 @@ export async function signUp(req, res) {
     req.body["new-password"],
     Number(env.HASH_SALT),
   );
-  const { username, email } = req.body;
+  const { username, email, nickname } = req.body;
   try {
     const newUser = await userQueries.addNewUser(
       username,
       email,
+      nickname,
       hashedPassword,
     );
 
@@ -36,7 +37,7 @@ export async function signUp(req, res) {
     if (error instanceof AppError) {
       throw error;
     } else {
-      throw new AppError("Failed to update the user record", 500, error);
+      throw new AppError("Failed to update the user record -", 500, error);
     }
   }
 }

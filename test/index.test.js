@@ -1,8 +1,7 @@
 /* eslint-disable no-console */
-import { expect, test, describe, afterEach, beforeAll, beforeEach } from "vitest";
+import { expect, test, describe, beforeAll } from "vitest";
 import request from "supertest";
 
-import { logger } from "../src/utils/logger.js";
 
 
 let app;
@@ -13,10 +12,10 @@ beforeAll(async () => {
   app = mod.app;
   prefix = mod.prefix;
 });
-
+/*
 beforeEach(() => {
   for (const t of logger.transports) {
-    t.silent = true;
+    t.silent = false;
   }
 });
 
@@ -28,6 +27,7 @@ afterEach((ctx) => {
     }
   }
 });
+*/
 test("should correctly construct the version prefix", async () => {
   expect(prefix).toBe("/v1");
 });

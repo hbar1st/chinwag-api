@@ -25,16 +25,13 @@ WHERE
 
     for (const row of rows) {
       const table = `${SCHEMA_NAME}.${row.relation_name}`;
-      console.log(`clearing rows in: ${table}`);
       await pool.query(`TRUNCATE TABLE ${table} CASCADE;`);
     }
   } catch (error) {
-    console.log(error);
     logger.error({ error });
-  } finally {
+  } /*finally {
     console.log("Tables successfully cleared of data");
-    await pool.end();
-  }
+  }*/
 
   return true;
 }

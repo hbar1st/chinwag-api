@@ -30,7 +30,6 @@ export async function createTables() {
     throw err;
   } finally {
     console.log("done");
-    await pool.end();
   }
 }
 
