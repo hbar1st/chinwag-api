@@ -24,38 +24,53 @@ const logFormat = printf(({ level, message, timestamp, stack, ...other }) => {
 });
 
 // This function creates transports based on silent mode
-function createTransports(silent) {
-  return [
-    new winston.transports.Console({
-      silent,
-      format: combine(
-        timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
-        errors({ stack: true }),
-        logFormat,
-        colorize(),
-      ),
-    }),
+function createTransports(silent=false) {
+  if (env.NODE_ENV === "production") {
+    return [
+      new winston.transports.Console({
+        silent: false,
+        format: combine(
+          timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
+          errors({ stack: true }),
+          logFormat,
+          colorize(),
+        ),
+      }),
 
-    new winston.transports.File({
-      filename: "logs/error.log",
-      level: "warn",
-      silent,
-    }),
+      new winston.transports.File({
+        filename: "logs/error.log",
+        level: "warn",
+        silent,
+      }),
 
-    new winston.transports.File({
-      filename: "logs/combined.log",
-      silent,
-    }),
-  ];
+      new winston.transports.File({
+        filename: "logs/combined.log",
+        silent,
+      }),
+    ];
+  } else {
+      return [
+        new winston.transports.Console({
+          silent: false,
+          stderrLevels: ["error", "info", "warn"],
+          consoleWarnLevels: ["warn"],
+          format: combine(
+            timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
+            errors({ stack: true }),
+            logFormat,
+            colorize(),
+          ),
+        }),
+      ];
+  } 
 }
 
 // Export a function that builds the logger
-export function createLogger(silent) {
-  // eslint-disable-next-line no-console
-  console.log("creating a new logger with silent set to : ", silent)
+export function createLogger(silent=false) {
+  
   return winston.createLogger({
     levels: logLevels,
-    level: "info",
+    level: process.env.LOG_LEVEL ?? "info",
     format: combine(
       timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
       colorize(),
@@ -68,5 +83,6 @@ export function createLogger(silent) {
 
 // Default logger for production/dev
 
-export const logger = createLogger();
+export const logger = createLogger(false);
+
 export default logger;

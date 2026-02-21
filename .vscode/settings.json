@@ -1,0 +1,6 @@
+{
+  "vitest.cliArguments": "--mode=test",
+  "vitest.nodeEnv": {
+    "NODE_ENV": "test"
+  }
+}

@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres:alpine3.23
-    container_name: chinwag-postgres    
+    container_name: chinwag-postgres
     env_file:
       - ./.env
     environment:
@@ -11,15 +11,30 @@ services:
     ports:
       - "${PGPORT}:${PGPORT}"
     volumes:
-      - pgdata:/var/lib/postgresql/data   
+      - pgdata:/var/lib/postgresql/data
     networks:
-      - chinwag_net   # join the network
+      - chinwag_net
 
+  db_test:
+    image: postgres:alpine3.23
+    container_name: chinwag-postgres-test
+    env_file:
+      - ./.env.test
+    environment:
+      POSTGRES_USER: ${PGUSER}
+      POSTGRES_PASSWORD: ${PGPASSWORD}
+      POSTGRES_DB: ${PGDATABASE_TEST}
+    ports:
+      - "${PGPORT_TEST}:${PGPORT_TEST}"   # test DB runs on a different port
+    volumes:
+      - /var/lib/postgresql/data
+    networks:
+      - chinwag_net
 
 volumes:
   pgdata:
-   
+  pgdata_test:
+
 networks:
   chinwag_net:
     name: chinwag_net
-

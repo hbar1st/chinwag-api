@@ -27,8 +27,18 @@ export async function createTables() {
     await pool.query(sqlCode);
   } catch (err) {
     console.error(err);
+    throw err;
   } finally {
     console.log("done");
-    await pool.end();
+  }
+}
+
+export async function clearTables() {
+
+  const { tables } =  await pool.query(
+    "SELECT table_name FROM information_schema.tables WHERE table_schema='chinwag' AND table_type='BASE TABLE';");
+
+  for (const table in tables) {
+    console.log(table)
   }
 }

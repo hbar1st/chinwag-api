@@ -1,36 +1,44 @@
 /* eslint-disable no-console */
 
-import { describe, test, expect, afterEach, beforeAll, beforeEach } from "vitest";
+import { describe, test, expect, afterEach, beforeAll} from "vitest";
 import request from "supertest";
 
 import { logger } from "../src/utils/logger.js";
+import { pool } from "../src/db/pool.js";
 
+import { clearAllTables } from "../src/db/dbutil.js";
 
+const STD_VALIDATION_MSG = "Action has failed due to some validation errors";
 let app;
 let prefix;
-const route = `${prefix}/user`;
+let route;
 
-
+/*
 beforeEach(() => {
   for (const t of logger.transports) {
-    t.silent = true;
-  }
+t.silent = true;
+}
 });
 
-afterEach((ctx) => {
-  if (ctx.task.result?.state === "fail") {
-    for (const t of logger.transports) {
-      t.silent = false;
-    }
-  }
+afterEach(async (ctx) => {
+  await clearAllTables();
+if (ctx.task.result?.state === "fail") {
+for (const t of logger.transports) {
+t.silent = false;
+}
+}
 });
 
-
+*/
+afterEach(async () => {
+  await clearAllTables();
+});
 
 beforeAll(async () => {
   const mod = await import("../src/serverSetup.js");
   app = mod.app;
   prefix = mod.prefix;
+  route = `${prefix}/user`;
 });
 
 
@@ -100,32 +108,412 @@ describe("Content Type and Headers", () => {
 
 describe("Signup and Login", () => {
   describe("Signup Validation", () => {
-
-    describe("email checks", () => {
-      test("Unique email check", async () => {
-        /*
-       const res = await request(app)
-          .post(`${route}/signup`)
+    
+    test("missing body checks", async () => {
+      const res = await request(app).post(`${route}/signup`);
+      
+      expect(res.status).toEqual(400);
+      expect(res.body.timestamp).toBeDefined();
+      expect(res.body.message).toEqual(STD_VALIDATION_MSG);
+      expect(res.body.data).toBeDefined();
+      expect(res.body.data).toBeInstanceOf(Array);
+      expect(res.body.data.length).toBeGreaterThan(0);
+    });
+    
+    test("Missing fields check", async () => {
+      const res = await request(app)
+      .post(`${route}/signup`)
+      .set("Accept", "application/json");
+      
+      expect(res.headers["content-type"]).toMatch(/json/);
+      expect(res.status).toEqual(400);
+      
+      const validationErrors = [
+        {
+          location: "body",
+          msg: "A password is required.",
+          path: "new-password",
+          type: "field",
+          value: "*****",
+        },
+        {
+          location: "body",
+          msg: "A username is required.",
+          path: "username",
+          type: "field",
+          value: "",
+        },
+        {
+          type: "field",
+          value: "",
+          msg: "An email is required.",
+          path: "email",
+          location: "body",
+        },
+        {
+          type: "field",
+          value: "",
+          msg: "A nickname is required.",
+          path: "nickname",
+          location: "body"
+        },
+      ];
+      
+      expect(res.body).toEqual({
+        timestamp: expect.anything(),
+        message: STD_VALIDATION_MSG,
+        statusCode: 400,
+        data: expect.arrayContaining(validationErrors),
+      });
+      
+    });
+    
+    describe("Email checks", () => {
+      
+      test("Valid email check", async () => {
+        const res = await request(app)
+        .post(`${route}/signup`)
+        .set("Accept", "application/json")
+        .send({ email: "invalid" });
         
-        expect(res.status).toEqual(404);
-        expect(res.body.status).toEqual("fail");
-        */
+        expect(res.headers["content-type"]).toMatch(/json/);
+        expect(res.status).toEqual(400);
+        
+        const validationErr = {
+          type: "field",
+          value: "invalid",
+          msg: "Provide a valid email address.",
+          path: "email",
+          location: "body",
+        };
+        
+        expect(res.body).toEqual({
+          timestamp: expect.anything(),
+          message: STD_VALIDATION_MSG,
+          statusCode: 400,
+          data: expect.arrayContaining([validationErr]),
+        });
       });
-      test("Valid email check", () => {
-
+      
+      test("Unique email check", async () => {
+        const sql =
+        "INSERT INTO chinwag.users (username,email,nickname) VALUES ('notunique','notunique@email.com','notunique');";
+        try {
+          
+          // start by seeding the table first
+          await pool.query(sql);
+          
+          // then test with non-unique email
+          const res = await request(app)
+          .post(`${route}/signup`)
+          .set("Accept", "application/json")
+          .send({ email: "notunique@email.com" });
+          
+          
+          expect(res.headers["content-type"]).toMatch(/json/);
+          expect(res.status).toEqual(400);
+          
+          const validationErr = {
+            type: "field",
+            value: "notunique@email.com",
+            msg: "This email has already been registered. You must login instead.",
+            path: "email",
+            location: "body",
+          };
+          
+          expect(res.body).toEqual({
+            timestamp: expect.anything(),
+            message: STD_VALIDATION_MSG,
+            statusCode: 400,
+            data: expect.any(Array)
+          });
+          
+          expect(res.body.data).toContainEqual(validationErr);
+          
+        } catch (err) {
+          logger.error(err);
+          throw err;
+        }
       });
     });
-
+    
     describe("username checks", () => {
-      test("Unique username check", () => {
-
+      test("unique username check", async () => {
+        const sql =
+        "INSERT INTO chinwag.users (username,email,nickname) VALUES ('notunique','notunique@email.com','notunique');";
+        try {
+          // start by seeding the table first
+          await pool.query(sql);
+          
+          // then test with non-unique email
+          const res = await request(app)
+          .post(`${route}/signup`)
+          .set("Accept", "application/json")
+          .send({ username: "notunique" });
+          
+          expect(res.headers["content-type"]).toMatch(/json/);
+          expect(res.status).toEqual(400);
+          
+          const validationErr = {
+            type: "field",
+            value: "notunique",
+            msg: "This username has already been registered. You must login instead.",
+            path: "username",
+            location: "body",
+          };
+          
+          expect(res.body).toEqual({
+            timestamp: expect.anything(),
+            message: STD_VALIDATION_MSG,
+            statusCode: 400,
+            data: expect.any(Array),
+          });
+          
+          expect(res.body.data).toContainEqual(validationErr);
+        } catch (err) {
+          logger.error(err);
+          throw err;
+        }
+        
       })
-      test("username length check", () => {
-
+      
+      test("username length check", async () => {
+        
+        // then test with non-unique email
+        const res = await request(app)
+        .post(`${route}/signup`)
+        .set("Accept", "application/json")
+        .send({ username: "notuniquehastobeveryveryveryverylong", email: "notunique@email.com", nickname: "notunique", "new-password": "password", "confirm-password": "password" });
+        
+        
+        expect(res.headers["content-type"]).toMatch(/json/);
+        expect(res.status).toEqual(400);
+        
+        const validationErr = {
+          type: "field",
+          value: "notuniquehastobeveryveryveryverylong",
+          msg: "Usernames need to be between 1 and 25 characters long.",
+          path: "username",
+          location: "body",
+        };
+        expect(res.body).toEqual({
+          timestamp: expect.anything(),
+          message: STD_VALIDATION_MSG,
+          statusCode: 400,
+          data: expect.any(Array),
+        });
+        
+        expect(res.body.data).toContainEqual(validationErr);
       })
     });
-
-    describe("")
+    
+    test("nickname length check", async () => {
+      const res = await request(app)
+      .post(`${route}/signup`)
+      .set("Accept", "application/json")
+      .send({
+        username: "normal",
+        email: "notunique@email.com",
+        nickname: "notuniquehastobeveryveryveryverylong",
+        "new-password": "password",
+        "confirm-password": "password",
+      });
+      
+      expect(res.headers["content-type"]).toMatch(/json/);
+      expect(res.status).toEqual(400);
+      
+      const validationErr = {
+        type: "field",
+        value: "notuniquehastobeveryveryveryverylong",
+        msg: "Nickname cannot exceed 25 characters.",
+        path: "nickname",
+        location: "body",
+      };
+      expect(res.body).toEqual({
+        timestamp: expect.anything(),
+        message: STD_VALIDATION_MSG,
+        statusCode: 400,
+        data: expect.any(Array),
+      });
+      
+      expect(res.body.data).toContainEqual(validationErr);
+    });
+    
+    describe("password checks", () => {
+      test("missing password", async () => {
+        try {
+          
+          const res = await request(app)
+          .post(`${route}/signup`)
+          .set("Accept", "application/json")
+          .send({ "new-password":"password", username: "user", nickname:"user", email:"user@email.com" });
+          
+          expect(res.headers["content-type"]).toMatch(/json/);
+          expect(res.status).toEqual(400);
+          
+          const validationErr = {
+            type: "field",
+            value: "*****",
+            msg: "A password confirmation is required.",
+            path: "confirm-password",
+            location: "body",
+          };
+          
+          expect(res.body).toEqual({
+            timestamp: expect.anything(),
+            message: STD_VALIDATION_MSG,
+            statusCode: 400,
+            data: expect.any(Array),
+          });
+          
+          expect(res.body.data).toContainEqual(validationErr);
+        } catch (err) {
+          logger.error(err);
+          throw err;
+        }
+      });
+      
+      test("missing password", async () => {
+        try {
+          const res = await request(app)
+          .post(`${route}/signup`)
+          .set("Accept", "application/json")
+          .send({
+            "confirm-password": "password",
+            username: "user",
+            nickname: "user",
+            email: "user@email.com",
+          });
+          
+          expect(res.headers["content-type"]).toMatch(/json/);
+          expect(res.status).toEqual(400);
+          
+          const validationErr = {
+            type: "field",
+            value: "*****",
+            msg: "A password is required.",
+            path: "new-password",
+            location: "body",
+          };
+          
+          expect(res.body).toEqual({
+            timestamp: expect.anything(),
+            message: STD_VALIDATION_MSG,
+            statusCode: 400,
+            data: expect.any(Array),
+          });
+          
+          expect(res.body.data).toContainEqual(validationErr);
+        } catch (err) {
+          logger.error(err);
+          throw err;
+        }
+      });
+      
+      test("mismatched password fields", async () => {
+        try {
+          const res = await request(app)
+          .post(`${route}/signup`)
+          .set("Accept", "application/json")
+          .send({
+            "new-password": "new-password",
+            "confirm-password": "password",
+            username: "user",
+            nickname: "user",
+            email: "user@email.com",
+          });
+          
+          expect(res.headers["content-type"]).toMatch(/json/);
+          expect(res.status).toEqual(400);
+          
+          const validationErr = {
+            type: "field",
+            value: "*****",
+            msg: "The password confirmation must match the password value.",
+            path: "confirm-password",
+            location: "body",
+          };
+          
+          expect(res.body).toEqual({
+            timestamp: expect.anything(),
+            message: STD_VALIDATION_MSG,
+            statusCode: 400,
+            data: expect.any(Array),
+          });
+          
+          expect(res.body.data).toContainEqual(validationErr);
+        } catch (err) {
+          logger.error(err);
+          throw err;
+        }
+      });
+      test("password length check", async () => {
+        try {
+          const res = await request(app)
+          .post(`${route}/signup`)
+          .set("Accept", "application/json")
+          .send({
+            "new-password": "short",
+            "confirm-password": "short",
+            username: "user",
+            nickname: "user",
+            email: "user@email.com",
+          });
+          
+          expect(res.headers["content-type"]).toMatch(/json/);
+          expect(res.status).toEqual(400);
+          
+          const validationErr = {
+            type: "field",
+            value: "*****",
+            msg: "A minimum length of 8 characters is needed for the password. Ideally, aim to use 15 characters at least.",
+            path: "new-password",
+            location: "body",
+          };
+          
+          expect(res.body).toEqual({
+            timestamp: expect.anything(),
+            message: STD_VALIDATION_MSG,
+            statusCode: 400,
+            data: expect.any(Array),
+          });
+          
+          expect(res.body.data).toContainEqual(validationErr);
+        } catch (err) {
+          logger.error(err);
+          throw err;
+        }
+      });
+    });
+    
+    test("Signup Happy Path", async () => {
+      try {
+        const res = await request(app)
+          .post(`${route}/signup`)
+          .set("Accept", "application/json")
+          .send({
+            "new-password": "password",
+            "confirm-password": "password",
+            username: "user",
+            nickname: "user",
+            email: "user@email.com",
+          });
+        
+        expect(res.headers["content-type"]).toMatch(/json/);
+        expect(res.status).toEqual(201);
+        expect(res.body.data).toBeDefined();
+        expect(res.body.data.id).toBeDefined();
+        expect(res.body.data.id).toBeTypeOf("number");
+        expect(res.body.data.username).toBe("user");
+        expect(res.body.data.nickname).toBe("user");
+        expect(res.body.data.email).toBe("user@email.com");
+        
+      } catch (err) {
+        logger.error(err);
+        throw err;
+      }
+    });
+    
   })
 })
 

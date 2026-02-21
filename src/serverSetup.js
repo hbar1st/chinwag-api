@@ -96,10 +96,14 @@ const INTERNAL_ERROR =
 app.use((err, _req, res, _next) => {
   const timestamp = new Date().toUTCString();
   res.set({ "Content-Type": "application/problem+json" }); // this type from https://datatracker.ietf.org/doc/html/rfc7807#section-3
-  try {
-    logger.error("================================================");
-    logger.error("in the catch-all: ", err);
 
+  try {
+    if (err instanceof ValidationError) {
+      logger.warn(err)
+    } else {
+      logger.error("================================================");
+      logger.error("in the catch-all: ", err);
+    }
     if (err instanceof AppError || err.name === "AppError") {
       {
         res.status(err.statusCode);
