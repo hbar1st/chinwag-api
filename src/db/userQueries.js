@@ -61,7 +61,7 @@ export async function getUserPasswordById(id) {
 export async function getUserPassword(username) {
   logger.info("in getUserPassword: ", { username });
   const { rows } = await pool.query(
-    "SELECT id,username,email,pw.user_password FROM chinwag.users INNER JOIN chinwag.passwords AS pw ON chinwag.users.id=pw.user_id WHERE username=$1;",
+    "SELECT id,username,email,nickname,avatar_url,pw.user_password FROM chinwag.users INNER JOIN chinwag.passwords AS pw ON chinwag.users.id=pw.user_id WHERE username=$1;",
     [username],
   );
   return rows[0]; // return the first row only
