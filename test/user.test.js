@@ -106,7 +106,8 @@ describe("Content Type and Headers", () => {
   });
 });
 
-describe("Signup and Login", () => {
+describe("Signup & Login", () => {
+  
   describe("Signup Validation", () => {
     
     test("missing body checks", async () => {
@@ -346,7 +347,7 @@ describe("Signup and Login", () => {
           const res = await request(app)
           .post(`${route}/signup`)
           .set("Accept", "application/json")
-          .send({ "new-password":"password", username: "user", nickname:"user", email:"user@email.com" });
+          .send({ "new-password": "password", username: "user", nickname: "user", email: "user@email.com" });
           
           expect(res.headers["content-type"]).toMatch(/json/);
           expect(res.status).toEqual(400);
@@ -489,15 +490,15 @@ describe("Signup and Login", () => {
     test("Signup Happy Path", async () => {
       try {
         const res = await request(app)
-          .post(`${route}/signup`)
-          .set("Accept", "application/json")
-          .send({
-            "new-password": "password",
-            "confirm-password": "password",
-            username: "user",
-            nickname: "user",
-            email: "user@email.com",
-          });
+        .post(`${route}/signup`)
+        .set("Accept", "application/json")
+        .send({
+          "new-password": "password",
+          "confirm-password": "password",
+          username: "user",
+          nickname: "user",
+          email: "user@email.com",
+        });
         
         expect(res.headers["content-type"]).toMatch(/json/);
         expect(res.status).toEqual(201);
@@ -515,5 +516,170 @@ describe("Signup and Login", () => {
     });
     
   })
-})
+  
+  
+  describe("Login Validation", () => {
+    test("missing body checks", async () => {
+      const res = await request(app).post(`${route}/login`);
+      
+      expect(res.status).toEqual(400);
+      expect(res.body.timestamp).toBeDefined();
+      expect(res.body.message).toEqual(STD_VALIDATION_MSG);
+      expect(res.body.data).toBeDefined();
+      expect(res.body.data).toBeInstanceOf(Array);
+      expect(res.body.data.length).toBeGreaterThan(0);
+    });
+    
+    test("Missing fields check", async () => {
+      const res = await request(app)
+      .post(`${route}/login`)
+      .set("Accept", "application/json");
+      
+      expect(res.headers["content-type"]).toMatch(/json/);
+      expect(res.status).toEqual(400);
+      
+      const validationErrors = [
+        {
+          location: "body",
+          msg: "A password is required.",
+          path: "password",
+          type: "field",
+        },
+        {
+          location: "body",
+          msg: "A username is required.",
+          path: "username",
+          type: "field",
+          value: "",
+        },
+      ];
+      
+      expect(res.body).toEqual({
+        timestamp: expect.anything(),
+        message: STD_VALIDATION_MSG,
+        statusCode: 400,
+        data: expect.arrayContaining(validationErrors),
+      });
+    });
+    
+    test("Login Happy Path", async () => {
+      try {
+        //signup first
+        let res = await request(app)
+        .post(`${route}/signup`)
+        .set("Accept", "application/json")
+        .send({
+          "new-password": "password",
+          "confirm-password": "password",
+          username: "user",
+          nickname: "user",
+          email: "user@email.com",
+        });
+        
+        expect(res.headers["content-type"]).toMatch(/json/);
+        expect(res.status).toEqual(201);
+        
+        // try to login now
+        res = await request(app)
+        .post(`${route}/login`)
+        .set("Accept", "application/json")
+        .send({
+          password: "password",
+          username: "user",
+        });
+        expect(res.headers.authorization).toMatch(/^Bearer .*/);
+        expect(res.status).toEqual(200);
+        
+        expect(res.body.data).toBeDefined();
+        expect(res.body).toEqual({
+          data: expect.objectContaining({
+            id: expect.anything(),
+            username: "user",
+            nickname: "user",
+            email: "user@email.com",
+            "avatar_url": null,
+          })
+        })
+      } catch (err) {
+        logger.error(err);
+        throw err;
+      }
+    });
+    
+    test("Login - Invalid Password", async () => {
+      try {
+        //signup first
+        let res = await request(app)
+        .post(`${route}/signup`)
+        .set("Accept", "application/json")
+        .send({
+          "new-password": "password",
+          "confirm-password": "password",
+          username: "user",
+          nickname: "user",
+          email: "user@email.com",
+        });
+        
+        expect(res.headers["content-type"]).toMatch(/json/);
+        expect(res.status).toEqual(201);
+        
+        // try to login with invalid password
+        res = await request(app)
+        .post(`${route}/login`)
+        .set("Accept", "application/json")
+        .send({
+          password: "invalidpassword",
+          username: "user",
+        });
+        expect(res.headers.authorization).toBeFalsy();
+        expect(res.status).toEqual(401);
+        expect(res.headers["content-type"]).toMatch(/json/);
+        expect(res.body.message).toBeDefined();
+        expect(res.body.message).toEqual("Cannot verify credentails.");
 
+
+      } catch (err) {
+        logger.error(err);
+        throw err;
+      }
+    });
+    
+    test("Login Unknown User", async () => {
+      try {
+        // try to login with unknown user
+        const res = await request(app)
+        .post(`${route}/login`)
+        .set("Accept", "application/json")
+        .send({
+          password: "password",
+          username: "user",
+        });
+        expect(res.headers.authorization).toBeFalsy();
+        
+        expect(res.headers["content-type"]).toMatch(/json/);
+        expect(res.body.data).toBeDefined();
+        expect(res.body.data).toBeInstanceOf(Array);
+        expect(res.body.data.length).toBeGreaterThan(0);
+        
+        const validationErr = {
+          location: "body",
+          msg: "Failed to find this username",
+          path: "username",
+          type: "field",
+          value: "user",
+        };
+        
+        expect(res.body).toEqual({
+          timestamp: expect.anything(),
+          message: STD_VALIDATION_MSG,
+          statusCode: 400,
+          data: expect.arrayContaining([validationErr]),
+        });
+      } catch (err) {
+        logger.error(err);
+        throw err;
+      }
+    });
+  });
+  
+}); // end of Signup & Login group

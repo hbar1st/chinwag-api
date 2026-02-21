@@ -1,5 +1,4 @@
 import AppError from "../errors/AppError.js";
-import AuthError from "../errors/AuthError.js";
 import * as userQueries from "../db/userQueries.js";
 import { logger } from "../utils/logger.js";
 
@@ -11,6 +10,7 @@ import jwt from "jsonwebtoken";
 
 //import "dotenv/config";
 import { env } from "node:process";
+import AuthError from "../errors/AuthError.js";
 
 export async function signUp(req, res) {
   logger.info("trying to signUp");
@@ -74,7 +74,7 @@ export async function login(req, res) {
     const user = await userQueries.getUserPassword(req.body.username);
     if (!user) {
       logger.warn("the user's username is not in the db");
-      throw new AuthError("Incorrect username or password.");
+      throw new AuthError();
     }
     // confirm password match?
     const match = await bcrypt.compare(
@@ -84,7 +84,7 @@ export async function login(req, res) {
     if (!match) {
       // passwords do not match!
       logger.warn("it's the wrong password");
-      throw new AuthError("Incorrect username or password.");
+      throw new AuthError();
     }
     const token = jwt.sign(
       {
@@ -97,9 +97,9 @@ export async function login(req, res) {
     res.set({ Authorization: `Bearer ${token}` });
     res.set("Access-Control-Expose-Headers", "Authorization");
 
-    const { id, username, email } = user; // can't send the whole user back as it contains the pwd
-    res.status(204).json({
-      data: { id, username, email },
+    delete user["user_password"]; //remove the password in the object we're sending back
+    res.status(200).json({
+      data: user,
     });
   } catch (error) {
     if (error instanceof AppError) {
