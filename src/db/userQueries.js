@@ -7,7 +7,7 @@ import AppError from "../errors/AppError.js";
 export async function findOtherUser(userId, email) {
   logger.info("in findOtherUser: ", { userId, email });
   const { rows } = await pool.query(
-    "SELECT id,username,email FROM chinwag.users WHERE email=$1 AND id<>$2;",
+    "SELECT id,username,email,nickname,avatar_url FROM chinwag.users WHERE email=$1 AND id<>$2;",
     [email, Number(userId)],
   );
   return rows[0]; //return only the first row which hopefully exists
@@ -16,7 +16,7 @@ export async function findOtherUser(userId, email) {
 export async function findOtherUserByUsername(userId, username) {
   logger.info("in findOtherUserByUsername: ", { userId, username });
   const { rows } = await pool.query(
-    "SELECT id,username,email FROM chinwag.users WHERE username=$1 AND id<>$2;",
+    "SELECT id,username,email,nickname,avatar_url FROM chinwag.users WHERE username=$1 AND id<>$2;",
     [username, Number(userId)],
   );
   return rows[0]; //return only the first row which hopefully exists
@@ -25,7 +25,7 @@ export async function findOtherUserByUsername(userId, username) {
 export async function getUserByEmail(email) {
   logger.info("in getUserByEmail: ", { email });
   const { rows } = await pool.query(
-    "SELECT id,username,email FROM chinwag.users WHERE email=$1;",
+    "SELECT id,username,email,nickname,avatar_url FROM chinwag.users WHERE email=$1;",
     [email],
   );
   return rows[0]; //return only the first row which hopefully exists
@@ -34,7 +34,7 @@ export async function getUserByEmail(email) {
 export async function getUserByUsername(username) {
   logger.info("in getUserByUsername: ", { username });
   const { rows } = await pool.query(
-    "SELECT id,username,email FROM chinwag.users WHERE username=$1;",
+    "SELECT id,username,email,nickname,avatar_url FROM chinwag.users WHERE username=$1;",
     [username],
   );
   return rows[0];
@@ -43,7 +43,7 @@ export async function getUserByUsername(username) {
 export async function getUserById(id) {
   logger.info("in getUserById: ", { id });
   const { rows } = await pool.query(
-    "SELECT id,username,email FROM chinwag.users WHERE id=$1;",
+    "SELECT id,username,email,nickname,avatar_url FROM chinwag.users WHERE id=$1;",
     [id],
   );
   return rows[0];
@@ -92,7 +92,7 @@ export async function addNewUser(username, email, nickname, password) {
     const { rows } = await client.query(
       `INSERT INTO chinwag.users (username, email, nickname)
        VALUES ($1, $2, $3)
-       RETURNING id, username, email, nickname;`,
+       RETURNING id, username, email, nickname, avatar_url;`,
       [username, email, nickname],
     );
 
@@ -119,9 +119,11 @@ export async function addNewUser(username, email, nickname, password) {
 
 export async function updateUser(id, {
   username,
-  email
+  email,
+  nickname,
+  avatar_url
 }) {
-  logger.info(`in updateUser: ${id}`, {username, email});
+  logger.info(`in updateUser: ${id}`, {username, email, nickname, avatar_url});
 
   if (!id) {
     throw new AppError("Cannot update a user without an id");

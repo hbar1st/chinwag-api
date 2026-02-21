@@ -30,9 +30,6 @@ t.silent = false;
 });
 
 */
-afterEach(async () => {
-  await clearAllTables();
-});
 
 beforeAll(async () => {
   const mod = await import("../src/serverSetup.js");
@@ -106,7 +103,72 @@ describe("Content Type and Headers", () => {
   });
 });
 
+describe.only("Get & Update User Profile", () => {
+  
+  let bearerToken; //the bearer token used in this set of tests
+  let user; // the user object used in this set of tests
+  
+  beforeAll(async () => {
+    await clearAllTables();
+    //signup first
+    let res = await request(app)
+    .post(`${route}/signup`)
+    .set("Accept", "application/json")
+    .send({
+      "new-password": "password",
+      "confirm-password": "password",
+      username: "test-username",
+      nickname: "test-nickname",
+      email: "testuser@email.com",
+    });
+    
+    expect(res.headers["content-type"]).toMatch(/json/);
+    expect(res.status).toEqual(201);
+    user = res.body.data;
+    // then login to get the jwt header
+    res = await request(app)
+    .post(`${route}/login`)
+    .set("Accept", "application/json")
+    .send({ username: "test-username" , password: "password"});
+    
+    expect(res.headers["content-type"]).toMatch(/json/);
+    expect(res.status).toEqual(200);
+
+    bearerToken = res.headers.authorization;
+  });
+  
+  describe("Get User Profile", () => {
+    describe("GET /user/:id", () => {
+      
+      test("Unauthorized User", async () => {
+        const res = await request(app).get(`${route}/${user.id}`)
+        expect(res.status).toEqual(401);
+      });
+
+      test("Authorized User", async () => {
+        
+        const res = await request(app)
+          .get(`${route}/${user.id}`)
+          .set('Authorization', bearerToken);
+        
+        expect(res.status).toEqual(201);
+        expect(res.body.data.id).toEqual(user.id);
+        expect(res.body.data).toEqual(user)
+
+      })
+    });
+  });
+
+  describe("Update User Profile", () => {
+    test("PUT /user/:id", async () => { })
+  });
+});
+
 describe("Signup & Login", () => {
+  
+  afterEach(async () => {
+    await clearAllTables();
+  });
   
   describe("Signup Validation", () => {
     
@@ -636,8 +698,8 @@ describe("Signup & Login", () => {
         expect(res.headers["content-type"]).toMatch(/json/);
         expect(res.body.message).toBeDefined();
         expect(res.body.message).toEqual("Cannot verify credentails.");
-
-
+        
+        
       } catch (err) {
         logger.error(err);
         throw err;
