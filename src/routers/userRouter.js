@@ -32,20 +32,17 @@ userRouter
 // note that we retrieve the user id from the jwt token so we don't need it specified in the route
 userRouter
   .route("/")
+  .get(passport.authenticate("jwt", { session: false }), userController.getUser)
   .put(
     passport.authenticate("jwt", { session: false }),
-    userValidator.bodyExists,
+    userValidator.checkUserFieldsExist,
     handleExpressValidationErrors,
     userValidator.validateOptionalUserFields,
     handleExpressValidationErrors,
-    userController.updateUser
+    userController.updateUser,
   );
   
-  userRouter.route("/:id")
-  .get(
-    passport.authenticate("jwt", { session: false }),
-    userController.getUser,
-  );
+;
   /* TODO
   .delete(passport.authenticate("jwt", { session: false }), deleteUser);
   */
