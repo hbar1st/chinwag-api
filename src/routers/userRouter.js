@@ -45,10 +45,14 @@ userRouter
     handleExpressValidationErrors,
     userController.updateUser,
   );
-  
-;
-  /* TODO
-  .delete(passport.authenticate("jwt", { session: false }), deleteUser);
-  */
+
+userRouter
+  .route("/:id")
+  .get(
+    passport.authenticate("jwt", { session: false }),
+    userValidator.validateUserId,
+    handleExpressValidationErrors,
+    userController.getOtherUser,
+  );
 
 export default userRouter;

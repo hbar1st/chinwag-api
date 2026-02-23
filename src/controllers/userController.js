@@ -43,6 +43,31 @@ export async function signUp(req, res) {
 }
 
 /**
+ * gets the user record for a user other than the current authenticated user
+ * @param {} req
+ * @param {*} res
+ */
+export async function getOtherUser(req, res) {
+  logger.info("in getOtherUser:");
+
+  try {
+    const user = await userQueries.getUserById(req.params.id);
+
+    if (user) {
+      res.status(200).json({ data: { id: user.id, nickname: user.nickname, "avatar_url": user["avatar_url"] } });
+    } else {
+      throw new AppError("Failed to find the user.", 500);
+    }
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    } else {
+      throw new AppError("Failed to get the user record", 500, error);
+    }
+  }
+}
+
+/**
  * gets the user record for the currently authenticated user
  * @param {} req
  * @param {*} res
@@ -55,7 +80,7 @@ export async function getUser(req, res) {
     const user = await userQueries.getUserById(authUserId);
 
     if (user) {
-      res.status(201).json({ data: user });
+      res.status(200).json({ data: user });
     } else {
       throw new AppError("Failed to find the user.", 500);
     }

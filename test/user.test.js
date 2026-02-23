@@ -8,7 +8,7 @@ import {
   beforeAll,
   onTestFinished,
   onTestFailed,
-  skip
+  skip,
 } from "vitest";
 import request from "supertest";
 
@@ -92,7 +92,6 @@ describe("Content Type and Headers", () => {
 });
 
 describe("Delete User", () => {
-  
   let bearerToken; //the bearer token used in this set of tests
   let user; // the user object used in this set of tests
   const password = "password";
@@ -126,31 +125,30 @@ describe("Delete User", () => {
     bearerToken = res.headers.authorization;
   });
 
-  test.only("Delete user", async () => {
+  test("Delete user", async () => {
     const res = await request(app)
       .delete(`${route}`)
       .set("Authorization", bearerToken);
 
     expect(res.status).toEqual(204);
-    
-    const sql =
-      `SELECT * FROM chinwag.users WHERE username='${user.username}';`;
+
+    const sql = `SELECT * FROM chinwag.users WHERE username='${user.username}';`;
 
     // start by seeding the table first
     const { rows } = await pool.query(sql);
     expect(rows.length).toBe(0);
-
-  })
+  });
 });
 
 describe("Get & Update User Profile", () => {
   let bearerToken; //the bearer token used in this set of tests
   let user; // the user object used in this set of tests
+  let friend; // the friend of the user
   const password = "password";
 
   beforeAll(async () => {
     await clearAllTables();
-    //signup first
+    //user signup first
     let res = await request(app)
       .post(`${route}/signup`)
       .set("Accept", "application/json")
@@ -165,7 +163,7 @@ describe("Get & Update User Profile", () => {
     expect(res.headers["content-type"]).toMatch(/json/);
     expect(res.status).toEqual(201);
     user = res.body.data;
-    // then login to get the jwt header
+    // then user login to get the jwt header
     res = await request(app)
       .post(`${route}/login`)
       .set("Accept", "application/json")
@@ -175,6 +173,22 @@ describe("Get & Update User Profile", () => {
     expect(res.status).toEqual(200);
 
     bearerToken = res.headers.authorization;
+
+    // sign up the friend account too
+    res = await request(app)
+      .post(`${route}/signup`)
+      .set("Accept", "application/json")
+      .send({
+        "new-password": "fpassword",
+        "confirm-password": "fpassword",
+        username: "friend-username",
+        nickname: "friend-nickname",
+        email: "testfriend@email.com",
+      });
+
+    expect(res.headers["content-type"]).toMatch(/json/);
+    expect(res.status).toEqual(201);
+    friend = res.body.data;
   });
 
   describe("Get User Profile", () => {
@@ -186,10 +200,44 @@ describe("Get & Update User Profile", () => {
 
       test("Authorized User", async () => {
         const res = await request(app)
+          .get(`${route}`)
+          .set("Authorization", bearerToken);
+
+        expect(res.status).toEqual(200);
+      });
+    });
+
+    describe("GET /user/:id", () => {
+      test("Unknown id", async () => {
+        const res = await request(app)
           .get(`${route}/${user.id}`)
           .set("Authorization", bearerToken);
 
-        expect(res.status).toEqual(404);
+        expect(res.status).toEqual(400);
+
+        expect(res.body.message).toEqual(STD_VALIDATION_MSG);
+        expect(res.body.data).toBeDefined();
+        expect(res.body.data.length).toBeGreaterThan(0);
+        expect(res.body.data[0].msg).toEqual(
+          "A user id is required to complete the request.",
+        );
+      });
+      test.only("Happy Path", async () => {
+        const res = await request(app)
+          .get(`${route}/${friend.id}`)
+          .set("Authorization", bearerToken);
+
+        expect(res.status).toEqual(200);
+        expect(res.body.data).toBeDefined();
+        expect(res.body.data.username).not.toBeDefined();
+        expect(res.body.data.email).not.toBeDefined();
+        expect(res.body).toEqual({
+          data: expect.objectContaining({
+            id: expect.anything(),
+            nickname: friend.nickname,
+            avatar_url: null,
+          }),
+        });
       });
     });
   });
@@ -600,7 +648,7 @@ describe("Get & Update User Profile", () => {
               });
           });
           afterEach(async () => {
-            console.log("Reset the last test ------>")
+            console.log("Reset the last test ------>");
             //reset the test
             await request(app)
               .put(`${route}`)
@@ -611,7 +659,7 @@ describe("Get & Update User Profile", () => {
                 nickname: user.nickname,
                 username: user.username,
               });
-            console.log("<-------- Reset end")
+            console.log("<-------- Reset end");
           });
           test.each([
             { email: "newEmail-1@email.com", nickname: "newNickname-1" },
