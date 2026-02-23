@@ -8,9 +8,9 @@ import bcrypt from "bcrypt";
 // needed to authenticate the requests
 import jwt from "jsonwebtoken";
 
-//import "dotenv/config";
 import { env } from "node:process";
 import AuthError from "../errors/AuthError.js";
+import ValidationError from "../errors/ValidationError.js";
 
 export async function signUp(req, res) {
   logger.info("trying to signUp");
@@ -115,18 +115,21 @@ export async function updateUser(req, res) {
   // other values the user may change are: email/username
 
   const user = req.user;
-  logger.info(`userController.updateUser: `, user);
-  logger.info("req.body", Object.keys(req.body));
+  logger.info(`authenticated user: `, user);
+  if (!req.body) {
+    throw new ValidationError("Request missing a body")
+  }
+  logger.info("req.body in updateUser", req.body);
   const userDetails = { ...req.body };
   if (Object.hasOwn(userDetails, "confirm-password")) {
     delete userDetails["confirm-password"];
     delete userDetails["old-password"];
   }
   let updatedUser = null;
-  if (req.body["email"] || req.body["username"]) {
+  if (req.body.email || req.body.username || req.body.nickname || req.body["avatar_url"]) {
     try {
       updatedUser = await userQueries.updateUser(Number(user.id), userDetails);
-      //logger.info("updatedUser: ", updatedUser.rows);
+      logger.info("after query updatedUser: ", updatedUser);
       if (!updatedUser) {
         throw new AppError("Failed to update the user record", 500);
       }
@@ -158,7 +161,7 @@ export async function updateUser(req, res) {
       );
 
       if (row) {
-        updatedUser = user; //just return the same user record since we actually changed the password table not the user table
+        updatedUser = updatedUser ?? user; //just return the same user record since we actually changed the password table not the user table
       } else {
         logger.error("the row we failed to update: ", row);
         throw new AppError("Failed to update the user password record", 500);

@@ -133,14 +133,18 @@ export async function updateUser(id, {
   const params = [Number(id)];
 
   if (username) {
-    sqlsnip.push(`username=$${params.length + 1}${email ? "," : ""}`);
+    sqlsnip.push(`username=$${params.length + 1}${email||nickname ? "," : ""}`);
     params.push(username);
   }
   if (email) {
-    sqlsnip.push(`email=$${params.length + 1}`);
+    sqlsnip.push(`email=$${params.length + 1}${nickname ? "," : ""}`);
     params.push(email);
   }
-  sqlsnip.push("WHERE id=$1 RETURNING id,username,email;");
+  if (nickname) {
+    sqlsnip.push(`nickname=$${params.length + 1}`);
+    params.push(nickname)
+  }
+  sqlsnip.push("WHERE id=$1 RETURNING id,username,email,nickname,avatar_url;");
   logger.info(`Query to be run: ${sqlsnip.join(" ")}`)
 
   const { rows } = await pool.query(sqlsnip.join(" "), params);

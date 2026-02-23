@@ -46,16 +46,16 @@ Once phase 1 is done, contributions may be accepted if an issue is opened and tr
 ### Authenticated (logged in) User:
 
 - As a logged in user, I want to see all my message notifications so that I can read them.
-- As a auth user, I want to see 
+- As a auth user, I want to be able to see my profile so I can edit it.
 
 ## API Routes
 
-- POST /user/login 
-- POST /user/signup
-- GET /user/:id [list the username/email/nickname/profile image of a user - will display only if authenticated user is querying]
+- [x] POST /user/login 
+- [x] POST /user/signup
+- [x] GET /user/:id [list the username/email/nickname/profile/avatar_url image of a user - will display only if authenticated user is querying]
 - GET /user?username={}  [list by username - will display a username and profile image only if the auth user is not this same user]
 - GET /user?email={} [list by email - will display an email and a profile image only if the auth user is not this same user]
-- PUT /user/:id  [change the username/email/nickname of a user]
+- [ ] PUT /user/:id  [change the username/email/nickname/avatar_url of a user]
 - POST /user/:id/image  [ add a profile image]
 - GET /user/:id/image 
 - PUT /user/:id/image [ change the profile image]

@@ -1,5 +1,5 @@
 import * as userQueries from "../db/userQueries.js";
-import { body, param, checkExact } from "express-validator";
+import { body, param, checkExact, oneOf } from "express-validator";
 
 import ValidationError from "../errors/ValidationError.js";
 import AuthError from "../errors/AuthError.js";
@@ -105,6 +105,7 @@ const checkEmail = (optional) => {
   .notEmpty()
   .withMessage("An email is required.")
   .bail()
+  .isLength({min: 1})
   .isEmail()
   .withMessage("Provide a valid email address.")
   .bail()
@@ -119,7 +120,7 @@ const checkEmail = (optional) => {
       if (userRow) {
         throw new ValidationError(
           optional
-          ? "This email address cannot be used"
+          ? "This email address cannot be used."
           : "This email has already been registered. You must login instead.",
         );
       } else {
@@ -135,42 +136,44 @@ const checkEmail = (optional) => {
 // user for user password updates (protected path)
 const validateOldPassword = () => {
   const oldPwdChk = body("old-password").trim();
-  const newPwdChk = body("new-password").trim();
+  //const newPwdChk = body("new-password").trim();
   // if someone provides this, we need to make sure it matches
   return oldPwdChk
-  .if(newPwdChk.exists().notEmpty())
+    //.if(oldPwdChk.exists().notEmpty() && newPwdChk.exists().notEmpty())
+    .optional()
     .notEmpty()
-  .withMessage("You must provide an old-password")
-  .bail()
-  .custom(async (value, { req }) => {
-    logger.info("in the old-password custom check");
-    if (req.user) {
-      try {
-        const res = await userQueries.getUserPasswordById(req.user.id);
-        if (!res) {
-          logger.warn("the user's username is not in the db");
-          throw new AuthError("Unknown user.");
+    .withMessage("You must provide an old-password")
+    .bail()
+    .custom(async (value, { req }) => {
+      logger.info("in the old-password custom check");
+      if (req.user) {
+        try {
+          const res = await userQueries.getUserPasswordById(req.user.id);
+          if (!res) {
+            logger.warn("the user's username is not in the db");
+            throw new AuthError("Unknown user.");
+          }
+          // confirm password match?
+          const match = await bcrypt.compare(value, res["user_password"]);
+          if (!match) {
+            // passwords do not match!
+            logger.warn("it's the wrong password");
+            throw new ValidationError("Old password does not match.");
+          }
+        } catch (error) {
+          logger.error(error);
+          throw error;
         }
-        // confirm password match?
-        const match = await bcrypt.compare(value, res["user_password"]);
-        if (!match) {
-          // passwords do not match!
-          logger.warn("it's the wrong password");
-          throw new ValidationError("Old password does not match.");
-        }
-      } catch (error) {
-        logger.error(error);
-        throw error;
+      } else {
+        throw new ValidationError("Unknown or unauthenticated user.");
       }
-    } else {
-      throw new ValidationError("Unknown or unauthenticated user.");
-    }
-  })
-  .bail()
-  .customSanitizer(async (value) => {
-    logger.info("sanitizing the old-password value with bcrypt");
-    return await bcrypt.hash(value, Number(process.env.HASH_SALT));
-  });
+    })
+    .bail()
+    .customSanitizer(async (value) => {
+      logger.info("sanitizing the old-password value with bcrypt");
+      return await bcrypt.hash(value, Number(process.env.HASH_SALT));
+    })
+    .hide("*****");
 };
 
 const checkPassword = (optional, paramName = "new-password") => {
@@ -187,12 +190,12 @@ const checkPassword = (optional, paramName = "new-password") => {
   .hide("*****")
 };
 
-const checkNewPassword = (optional, paramName = "new-password") => {
+const checkNewPassword = (_optional, paramName = "new-password") => {
   const ch1 = body(paramName).trim();
   const confirmPwdChk = body("confirm-password").trim();
   return ch1
-  .if(confirmPwdChk.exists().notEmpty())
-    .notEmpty()
+  .if(ch1.exists() && confirmPwdChk.exists().notEmpty())
+  .notEmpty()
   .withMessage("A password is required.")
   .bail()
   .isLength({ min: 8 })
@@ -204,7 +207,7 @@ const checkNewPassword = (optional, paramName = "new-password") => {
 
 const checkPasswordConfirmation = () => {
   const ch1 = body("confirm-password")
-  .if(body("new-password").notEmpty())
+  .if(body("confirm-password").exists() && body("new-password").exists() && body("new-password").notEmpty())
     .trim();
   return ch1
   .notEmpty()
@@ -242,24 +245,39 @@ export const validateUserSignupFields = [
 ];
 
 // used for user updates
-export const validateOptionalUserFields = [
-  checkEmail(true),
-  checkUsername(true),
-  checkNickname(true),
-  validateOldPassword(),
-  checkNewPassword(true),
-  checkPasswordConfirmation(),
+
+export const validatePasswordFields = [
+    validateOldPassword(),
+    checkNewPassword(false),
+    checkPasswordConfirmation(),
 ];
 
-export const bodyExists = (req, res, next) => {
-  logger.info("validation body:", Object.keys(req.body));
-  
-  if (!req.body || Object.keys(req.body).length === 0) {
-    return next(new ValidationError("Request missing required body fields"));
-  }
-  
-  next();
-};
+export const checkUserFieldsExist = [
+  oneOf(
+    [
+      body('email').exists(),
+      body('username').exists(),
+      body('nickname').exists(),
+      body('old-password').exists().trim().notEmpty().custom(() => {
+        return body('new-password').exists().trim().notEmpty().custom(() => {
+          return body('confirm-password').exists().trim().notEmpty();
+        })
+      }),
+    ],
+    {
+      message:
+        "At least one required field must be provided. If modifying the password, all three password fields are required.",
+    },
+  ),
+];
+
+export const validateOptionalUserFields = [
+    checkEmail(true),
+    checkUsername(true),
+    checkNickname(true),
+    validatePasswordFields,
+];
+
 
 // used for creating a new user
 export const validateUserFields = [
