@@ -67,6 +67,14 @@ export async function getUserPassword(username) {
   return rows[0]; // return the first row only
 }
 
+export async function deleteUser(id) {
+  logger.info("in deleteUser: ", id);
+  const {rows} = await pool.query(
+    "DELETE FROM chinwag.users WHERE id=$1 RETURNING username", [id]
+  )
+  return rows;
+}
+
 export async function updateUserPwd(id, password) {
   logger.info(`in updateUserPwd: ${id}`);
   if (!id) {

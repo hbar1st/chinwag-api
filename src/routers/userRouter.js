@@ -33,6 +33,10 @@ userRouter
 userRouter
   .route("/")
   .get(passport.authenticate("jwt", { session: false }), userController.getUser)
+  .delete(
+    passport.authenticate("jwt", { session: false }),
+    userController.deleteUser,
+  )
   .put(
     passport.authenticate("jwt", { session: false }),
     userValidator.checkUserFieldsExist,

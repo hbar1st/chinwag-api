@@ -21,6 +21,7 @@
     "db:start": "docker compose -f ./docker-compose.yml up -d",
     "db:stop": "docker compose -f ./docker-compose.yml down",
     "db:logs": "docker compose -f ./docker-compose.yml logs -f db",
+    "db:test:shell": "bash -c 'source .env.test &&  docker compose exec db psql -U \"$PGUSER\" -d \"$PGDATABASE_TEST\"'",
     "db:shell": "bash -c 'source .env &&  docker compose exec db psql -U \"$PGUSER\" -d \"$PGDATABASE\"'",
     "db:setup": "bash -c 'source .env && docker compose exec -T db psql -U \"$PGUSER\" -d \"$PGDATABASE\" < ./src/db/setup-tables.sql'",
     "clean-n-dev": "npm run lint && npm run db:start && npm run db:setup && node src/db/populateTables.js && npm start",

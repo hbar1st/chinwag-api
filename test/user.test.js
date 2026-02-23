@@ -91,7 +91,59 @@ describe("Content Type and Headers", () => {
   });
 });
 
-describe.only("Get & Update User Profile", () => {
+describe("Delete User", () => {
+  
+  let bearerToken; //the bearer token used in this set of tests
+  let user; // the user object used in this set of tests
+  const password = "password";
+
+  beforeAll(async () => {
+    await clearAllTables();
+    //signup first
+    let res = await request(app)
+      .post(`${route}/signup`)
+      .set("Accept", "application/json")
+      .send({
+        "new-password": password,
+        "confirm-password": password,
+        username: "test-username",
+        nickname: "test-nickname",
+        email: "testuser@email.com",
+      });
+
+    expect(res.headers["content-type"]).toMatch(/json/);
+    expect(res.status).toEqual(201);
+    user = res.body.data;
+    // then login to get the jwt header
+    res = await request(app)
+      .post(`${route}/login`)
+      .set("Accept", "application/json")
+      .send({ username: "test-username", password: "password" });
+
+    expect(res.headers["content-type"]).toMatch(/json/);
+    expect(res.status).toEqual(200);
+
+    bearerToken = res.headers.authorization;
+  });
+
+  test.only("Delete user", async () => {
+    const res = await request(app)
+      .delete(`${route}`)
+      .set("Authorization", bearerToken);
+
+    expect(res.status).toEqual(204);
+    
+    const sql =
+      `SELECT * FROM chinwag.users WHERE username='${user.username}';`;
+
+    // start by seeding the table first
+    const { rows } = await pool.query(sql);
+    expect(rows.length).toBe(0);
+
+  })
+});
+
+describe("Get & Update User Profile", () => {
   let bearerToken; //the bearer token used in this set of tests
   let user; // the user object used in this set of tests
   const password = "password";
@@ -531,7 +583,7 @@ describe.only("Get & Update User Profile", () => {
         });
 
         //TODO check with updates to more than one (email and nickname, username and password, all 4?)
-        describe.only("Multi-field user update", () => {
+        describe("Multi-field user update", () => {
           //update different combos like username and nickname
           //or update email and password
           //or update all

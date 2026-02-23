@@ -110,6 +110,27 @@ export async function login(req, res) {
   }
 }
 
+export async function deleteUser(req, res) {
+  
+  const user = req.user;
+  logger.info(`authenticated user: `, user);
+  try {
+    const rows = await userQueries.deleteUser(user.id);
+    if (rows) {
+      console.log(rows);
+      res.status(204).send();
+    } else {
+      throw new AppError("Failed to delete the user");
+    }
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    } else {
+      throw new AppError("Failed to delete user -", 500, error);
+    }
+  }
+}
+
 export async function updateUser(req, res) {
   // if user wants to change the password, we need to re-hash it before storing it
   // other values the user may change are: email/username

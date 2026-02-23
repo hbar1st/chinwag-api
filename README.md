@@ -55,12 +55,12 @@ Once phase 1 is done, contributions may be accepted if an issue is opened and tr
 - [x] GET /user/:id [list the username/email/nickname/profile/avatar_url image of a user - will display only if authenticated user is querying]
 - GET /user?username={}  [list by username - will display a username and profile image only if the auth user is not this same user]
 - GET /user?email={} [list by email - will display an email and a profile image only if the auth user is not this same user]
-- [ ] PUT /user/:id  [change the username/email/nickname/avatar_url of a user]
+- [x] PUT /user/:id  [change the username/email/nickname/avatar_url of a user]
 - POST /user/:id/image  [ add a profile image]
-- GET /user/:id/image 
-- PUT /user/:id/image [ change the profile image]
+- [] GET /user/:id/image 
+- [] PUT /user/:id/image [ change the profile image]
 - DELETE /user/:id/image [delete the profile image]
-- DELETE /user/:id [delete the user account]
+- [] DELETE /user/:id [delete the user account]
 
 - POST /message [in the form: the recipient id, the message, any images]
 - PUT /message/:id [to edit an existing message. Can change the message or the image(s)]
