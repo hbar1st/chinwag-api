@@ -52,14 +52,14 @@ Once phase 1 is done, contributions may be accepted if an issue is opened and tr
 
 - [x] POST /user/login 
 - [x] POST /user/signup
-- [x] GET /user [list the username/email/nickname/profile/avatar_url image of a user - will display only if authenticated user is querying]
-- [x] GET /user/:id [list the id, nickname and avatar_url of the user - does not need to be the same user who is querying for it]
+- [x] GET /user [list the username/email/nickname/profile/avatar_id image of a user - will display only if authenticated user is querying]
+- [x] GET /user/:id [list the id, nickname and avatar_id of the user - does not need to be the same user who is querying for it]
 - [] GET /user?username={}  [list by username - will return an id, nickname and profile image only if the auth user is not this same user]
 - [] GET /user?email={} [list by email - will return an id, nickname and a profile image only if the auth user is not this same user]
 - [x] PUT /user  [change the username/email/nickname/password of a user]
 - [] GET /user/image 
-- [] PUT /user/image [ change the profile image]
-- [] DELETE /user/image [delete the profile image]
+- [] PUT /user/image [ change the authenticated user's profile image - uploads to Cloudinary]
+- [] DELETE /user/image [delete the authenticated user's profile image - deletes from Cloudinary]
 - [x] DELETE /user [delete the user account]
 
 - POST /chat/:id/message [in the form: the recipient id, the message, any images]

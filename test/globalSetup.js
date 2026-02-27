@@ -20,7 +20,7 @@ export async function setup() {
 
 export function teardown() {
   console.log("teardown - clears all records from the tables");
-  //clearAllTables();
+  //await clearAllTables();
   return pool.end();
 
 }

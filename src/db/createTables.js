@@ -38,7 +38,8 @@ export async function clearTables() {
   const { tables } =  await pool.query(
     "SELECT table_name FROM information_schema.tables WHERE table_schema='chinwag' AND table_type='BASE TABLE';");
 
-  for (const table in tables) {
-    console.log(table)
-  }
+    for (const row of tables) {
+      const table = `"chinwag"."${row.table_name}"`;
+      await pool.query(`TRUNCATE TABLE ${table} RESTART IDENTITY CASCADE;`);
+    }
 }

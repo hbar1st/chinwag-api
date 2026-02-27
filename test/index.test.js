@@ -2,8 +2,6 @@
 import { expect, test, describe, beforeAll } from "vitest";
 import request from "supertest";
 
-
-
 let app;
 let prefix;
 
@@ -12,22 +10,7 @@ beforeAll(async () => {
   app = mod.app;
   prefix = mod.prefix;
 });
-/*
-beforeEach(() => {
-  for (const t of logger.transports) {
-    t.silent = false;
-  }
-});
 
-
-afterEach((ctx) => {
-  if (ctx.task.result?.state === "fail") {
-    for (const t of logger.transports) {
-      t.silent = false;
-    }
-  }
-});
-*/
 test("should correctly construct the version prefix", async () => {
   expect(prefix).toBe("/v1");
 });

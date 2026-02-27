@@ -14,45 +14,60 @@ const userRouter = Router();
 
 
 userRouter
-  .route("/signup")
-  .post(
-    userValidator.validateUserFields,
-    handleExpressValidationErrors,
-    userController.signUp,
-  );
+.route("/signup")
+.post(
+  userValidator.validateUserFields,
+  handleExpressValidationErrors,
+  userController.signUp,
+);
 
 userRouter
-  .route("/login")
-  .post(
-    userValidator.validateUserLoginFields,
-    handleExpressValidationErrors,
-    userController.login,
-  );
+.route("/login")
+.post(
+  userValidator.validateUserLoginFields,
+  handleExpressValidationErrors,
+  userController.login,
+);
 
 // note that we retrieve the user id from the jwt token so we don't need it specified in the route
 userRouter
-  .route("/")
-  .get(passport.authenticate("jwt", { session: false }), userController.getUser)
-  .delete(
+.route("/")
+.get(passport.authenticate("jwt", { session: false }), userController.getUser)
+.delete(
+  passport.authenticate("jwt", { session: false }),
+  userController.deleteUser,
+)
+.put(
+  passport.authenticate("jwt", { session: false }),
+  userValidator.checkUserFieldsExist,
+  handleExpressValidationErrors,
+  userValidator.validateOptionalUserFields,
+  handleExpressValidationErrors,
+  userController.updateUser,
+);
+
+// gotta put this route higher up than the /user/:id one to avoid confusion 
+userRouter
+  .route("/image")
+  .get(
     passport.authenticate("jwt", { session: false }),
-    userController.deleteUser,
+    userController.getProfileImage,
   )
   .put(
     passport.authenticate("jwt", { session: false }),
-    userValidator.checkUserFieldsExist,
-    handleExpressValidationErrors,
-    userValidator.validateOptionalUserFields,
-    handleExpressValidationErrors,
-    userController.updateUser,
+    userValidator.validateImage,
+    userController.uploadProfileImage,
   );
 
+//constrain the route to decimals only
 userRouter
-  .route("/:id")
-  .get(
-    passport.authenticate("jwt", { session: false }),
-    userValidator.validateUserId,
-    handleExpressValidationErrors,
-    userController.getOtherUser,
-  );
+.route("/:id")
+.get(
+  passport.authenticate("jwt", { session: false }),
+  userValidator.validateUserId,
+  handleExpressValidationErrors,
+  userController.getOtherUser,
+);
+
 
 export default userRouter;

@@ -2,6 +2,8 @@ import AppError from "../errors/AppError.js";
 import * as userQueries from "../db/userQueries.js";
 import { logger } from "../utils/logger.js";
 
+//import { Image } from "../utils/Image.js";
+
 // needed to hash the password value
 import bcrypt from "bcrypt";
 
@@ -54,7 +56,15 @@ export async function getOtherUser(req, res) {
     const user = await userQueries.getUserById(req.params.id);
 
     if (user) {
-      res.status(200).json({ data: { id: user.id, nickname: user.nickname, "avatar_url": user["avatar_url"] } });
+      res
+        .status(200)
+        .json({
+          data: {
+            id: user.id,
+            nickname: user.nickname,
+            avatar_id: user["avatar_id"],
+          },
+        });
     } else {
       throw new AppError("Failed to find the user.", 500);
     }
@@ -72,6 +82,27 @@ export async function getOtherUser(req, res) {
  * @param {} req
  * @param {*} res
  */
+export async function getProfileImage(req, res) {
+  logger.info("in getProfileImage:");
+
+  const authUserId = req.user.id;
+  try {
+    const user = await userQueries.getUserById(authUserId);
+
+    if (user) {
+      res.status(200).json({ data: { "avatar_id": user["avatar_id"] } });
+    } else {
+      throw new AppError("Failed to find the user.", 500);
+    }
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    } else {
+      throw new AppError("Failed to get the user profile image", 500, error);
+    }
+  }
+}
+
 export async function getUser(req, res) {
   logger.info("in getUser:");
 
@@ -92,7 +123,6 @@ export async function getUser(req, res) {
     }
   }
 }
-
 export async function login(req, res) {
   logger.info(`trying to login: ${req.body.username}`);
   try {
@@ -135,15 +165,29 @@ export async function login(req, res) {
   }
 }
 
+export async function uploadProfileImage(req, res) {
+  const user = req.user;
+  logger.info("in uploadProfileImage for id: ", user.id);
+  try {
+    
+    //const user = await userQueries.updateAvatar(user.id,avatar_url);
+    res.status(204).end();
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    } else {
+      throw new AppError("Failed to delete user -", 500, error);
+    }
+  }
+}
+
 export async function deleteUser(req, res) {
-  
   const user = req.user;
   logger.info(`authenticated user: `, user);
   try {
     const rows = await userQueries.deleteUser(user.id);
     if (rows) {
-      console.log(rows);
-      res.status(204).send();
+      res.status(204).end();
     } else {
       throw new AppError("Failed to delete the user");
     }
@@ -163,7 +207,7 @@ export async function updateUser(req, res) {
   const user = req.user;
   logger.info(`authenticated user: `, user);
   if (!req.body) {
-    throw new ValidationError("Request missing a body")
+    throw new ValidationError("Request missing a body");
   }
   logger.info("req.body in updateUser", req.body);
   const userDetails = { ...req.body };
@@ -172,7 +216,12 @@ export async function updateUser(req, res) {
     delete userDetails["old-password"];
   }
   let updatedUser = null;
-  if (req.body.email || req.body.username || req.body.nickname || req.body["avatar_url"]) {
+  if (
+    req.body.email ||
+    req.body.username ||
+    req.body.nickname ||
+    req.body["avatar_id"]
+  ) {
     try {
       updatedUser = await userQueries.updateUser(Number(user.id), userDetails);
       logger.info("after query updatedUser: ", updatedUser);
@@ -227,3 +276,4 @@ export async function updateUser(req, res) {
 
   res.status(200).json({ data: updatedUser });
 }
+

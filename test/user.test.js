@@ -9,6 +9,7 @@ import {
   onTestFinished,
   onTestFailed,
   skip,
+  beforeEach,
 } from "vitest";
 import request from "supertest";
 
@@ -27,6 +28,8 @@ beforeAll(async () => {
   app = mod.app;
   prefix = mod.prefix;
   route = `${prefix}/user`;
+  
+  await clearAllTables();
 });
 
 describe("CORS Configuration", () => {
@@ -210,7 +213,7 @@ describe("Get & Update User Profile", () => {
     describe("GET /user/:id", () => {
       test("Unknown id", async () => {
         const res = await request(app)
-          .get(`${route}/${user.id}`)
+          .get(`${route}/10000`)
           .set("Authorization", bearerToken);
 
         expect(res.status).toEqual(400);
@@ -218,11 +221,9 @@ describe("Get & Update User Profile", () => {
         expect(res.body.message).toEqual(STD_VALIDATION_MSG);
         expect(res.body.data).toBeDefined();
         expect(res.body.data.length).toBeGreaterThan(0);
-        expect(res.body.data[0].msg).toEqual(
-          "A user id is required to complete the request.",
-        );
+        expect(res.body.data[0].msg).toEqual("This user id is invalid.");
       });
-      test.only("Happy Path", async () => {
+      test("Happy Path", async () => {
         const res = await request(app)
           .get(`${route}/${friend.id}`)
           .set("Authorization", bearerToken);
@@ -235,7 +236,7 @@ describe("Get & Update User Profile", () => {
           data: expect.objectContaining({
             id: expect.anything(),
             nickname: friend.nickname,
-            avatar_url: null,
+            avatar_id: null,
           }),
         });
       });
@@ -375,7 +376,7 @@ describe("Get & Update User Profile", () => {
                 username: user.username,
                 nickname: user.nickname,
                 email: user.email,
-                avatar_url: null,
+                avatar_id: null,
               }),
             });
 
@@ -467,7 +468,7 @@ describe("Get & Update User Profile", () => {
                 username: user.username,
                 nickname: user.nickname,
                 email: newEmail,
-                avatar_url: null,
+                avatar_id: null,
               }),
             });
 
@@ -556,7 +557,7 @@ describe("Get & Update User Profile", () => {
                 username: newUsername,
                 nickname: user.nickname,
                 email: user.email,
-                avatar_url: null,
+                avatar_id: null,
               }),
             });
             //undo the update
@@ -613,7 +614,7 @@ describe("Get & Update User Profile", () => {
                 username: user.username,
                 nickname: newNickname,
                 email: user.email,
-                avatar_url: null,
+                avatar_id: null,
               }),
             });
 
@@ -720,7 +721,7 @@ describe("Get & Update User Profile", () => {
                 username: form.username ?? user.username,
                 nickname: form.nickname ?? user.nickname,
                 email: form.email ?? user.email,
-                avatar_url: null,
+                avatar_id: null,
               }),
             });
             onTestFailed(() => {
@@ -749,11 +750,16 @@ describe("Get & Update User Profile", () => {
 });
 
 describe("Signup & Login", () => {
+  
+  beforeEach(async () => {
+    await clearAllTables();
+  });
   afterEach(async () => {
     await clearAllTables();
   });
 
   describe("Signup Validation", () => {
+
     test("missing body checks", async () => {
       const res = await request(app).post(`${route}/signup`);
 
@@ -840,7 +846,7 @@ describe("Signup & Login", () => {
 
       test("Unique email check", async () => {
         const sql =
-          "INSERT INTO chinwag.users (username,email,nickname) VALUES ('notunique','notunique@email.com','notunique');";
+          "INSERT INTO chinwag.users (username,email,nickname) VALUES ('notunique','notunique@email.com','notunique') ON CONFLICT DO NOTHING;";
         try {
           // start by seeding the table first
           await pool.query(sql);
@@ -880,7 +886,7 @@ describe("Signup & Login", () => {
     describe("username checks", () => {
       test("unique username check", async () => {
         const sql =
-          "INSERT INTO chinwag.users (username,email,nickname) VALUES ('notunique','notunique@email.com','notunique');";
+          "INSERT INTO chinwag.users (username,email,nickname) VALUES ('notunique','notunique@email.com','notunique') ON CONFLICT DO NOTHING;";
         try {
           // start by seeding the table first
           await pool.query(sql);
@@ -983,7 +989,8 @@ describe("Signup & Login", () => {
     });
 
     describe("password checks", () => {
-      test("missing password", async () => {
+      
+      test("missing password confirmation", async () => {
         try {
           const res = await request(app)
             .post(`${route}/signup`)
@@ -1020,7 +1027,7 @@ describe("Signup & Login", () => {
         }
       });
 
-      test("missing password", async () => {
+      test("missing new-password", async () => {
         try {
           const res = await request(app)
             .post(`${route}/signup`)
@@ -1094,6 +1101,7 @@ describe("Signup & Login", () => {
           throw err;
         }
       });
+
       test("password length check", async () => {
         try {
           const res = await request(app)
@@ -1162,6 +1170,12 @@ describe("Signup & Login", () => {
   });
 
   describe("Login Validation", () => {
+    beforeEach(async () => {
+      await clearAllTables();
+    });
+    afterEach(async () => {
+      await clearAllTables();
+    });
     test("missing body checks", async () => {
       const res = await request(app).post(`${route}/login`);
 
@@ -1206,7 +1220,16 @@ describe("Signup & Login", () => {
     });
 
     test("Login Happy Path", async () => {
+      
+      const userLHP = {
+        "new-password": "password",
+        "confirm-password": "password",
+        username: "user-lhp",
+        nickname: "user-lhp",
+        email: "user-lhp@email.com",
+      };
       try {
+        
         //signup first
         let res = await request(app)
           .post(`${route}/signup`)
@@ -1214,9 +1237,9 @@ describe("Signup & Login", () => {
           .send({
             "new-password": "password",
             "confirm-password": "password",
-            username: "user",
-            nickname: "user",
-            email: "user@email.com",
+            username: userLHP.username,
+            nickname: userLHP.nickname,
+            email: userLHP.email,
           });
 
         expect(res.headers["content-type"]).toMatch(/json/);
@@ -1228,7 +1251,7 @@ describe("Signup & Login", () => {
           .set("Accept", "application/json")
           .send({
             password: "password",
-            username: "user",
+            username: userLHP.username,
           });
         expect(res.headers.authorization).toMatch(/^Bearer .*/);
         expect(res.status).toEqual(200);
@@ -1237,10 +1260,10 @@ describe("Signup & Login", () => {
         expect(res.body).toEqual({
           data: expect.objectContaining({
             id: expect.anything(),
-            username: "user",
-            nickname: "user",
-            email: "user@email.com",
-            avatar_url: null,
+            username: userLHP.username,
+            nickname: userLHP.nickname,
+            email: userLHP.email,
+            avatar_id: null,
           }),
         });
       } catch (err) {
