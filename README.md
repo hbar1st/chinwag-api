@@ -52,24 +52,24 @@ Once phase 1 is done, contributions may be accepted if an issue is opened and tr
 
 - [x] POST /user/login 
 - [x] POST /user/signup
-- [x] GET /user/:id [list the username/email/nickname/profile/avatar_url image of a user - will display only if authenticated user is querying]
-- GET /user?username={}  [list by username - will display a username and profile image only if the auth user is not this same user]
-- GET /user?email={} [list by email - will display an email and a profile image only if the auth user is not this same user]
-- [ ] PUT /user/:id  [change the username/email/nickname/avatar_url of a user]
-- POST /user/:id/image  [ add a profile image]
-- GET /user/:id/image 
-- PUT /user/:id/image [ change the profile image]
-- DELETE /user/:id/image [delete the profile image]
-- DELETE /user/:id [delete the user account]
+- [x] GET /user [list the username/email/nickname/profile/avatar_id image of a user - will display only if authenticated user is querying]
+- [x] GET /user/:id [list the id, nickname and avatar_id of the user - does not need to be the same user who is querying for it]
+- [] GET /user?username={}  [list by username - will return an id, nickname and profile image only if the auth user is not this same user]
+- [] GET /user?email={} [list by email - will return an id, nickname and a profile image only if the auth user is not this same user]
+- [x] PUT /user  [change the username/email/nickname/password of a user]
+- [] GET /user/image 
+- [] PUT /user/image [ change the authenticated user's profile image - uploads to Cloudinary]
+- [] DELETE /user/image [delete the authenticated user's profile image - deletes from Cloudinary]
+- [x] DELETE /user [delete the user account]
 
-- POST /message [in the form: the recipient id, the message, any images]
-- PUT /message/:id [to edit an existing message. Can change the message or the image(s)]
-- DELETE /message/:id [can delete one's own message. IF it is a REPLY, then the form will include a reply field with replied to message's id]
+- POST /chat/:id/message [in the form: the recipient id, the message, any images]
+- PUT /chat/:id/message/:id [to edit an existing message. Can change the message or the image(s)]
+- DELETE /chat/:id/message/:id [can delete one's own message. IF it is a REPLY, then the form will include a reply field with replied to message's id]
 - GET /chat [gets all chat for the current user]
 - DELETE /chat/:id  [deletes a specific chat]
 - GET /chat/:id/message/ [gets all the messages for this user in a certain chat]
-- GET /chat/:id/message/unread_count [is a count of every single message this user got sent filtered to the ones that are unread in the chat]
-- GET /message/unread_count [gets a count of every single new message this user received]
+- GET /chat/:id/message/unread_count [is a count of every single message this user got sent filtered to the ones that are unread in the specified chat]
+- GET /chat/message/unread_count [gets a count of every single new message this user received across all chats]
 
 
 ## Bonus Functionality

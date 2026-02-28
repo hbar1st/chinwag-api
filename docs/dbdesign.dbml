@@ -11,7 +11,7 @@ Table chinwag.users {
   email varchar(50) [pk]
   nickname varchar(25) [not null]
   username varchar(25) [not null]
-  avatar_url  text [note: "use avatar from MUI if empty"]
+  avatar_id  text [note: "use avatar from MUI if empty"]
   last_active timetstamptz [note: "when user was last active"]
 }
 

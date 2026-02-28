@@ -13,22 +13,23 @@ const SCHEMA_NAME = "chinwag";
  * @returns 
  */
 export async function clearAllTables() {
+  logger.info("trying to clear all tables")
+
   try {
-    const { rows } = await pool.query(
-      `SELECT
-    table_name AS relation_name
-FROM
-    information_schema.tables
-WHERE
-    table_schema = '${SCHEMA_NAME}';`,
-    );
+    const { rows } = await pool.query(`
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = '${SCHEMA_NAME}'
+        AND table_type = 'BASE TABLE';
+    `);
 
     for (const row of rows) {
-      const table = `${SCHEMA_NAME}.${row.relation_name}`;
-      await pool.query(`TRUNCATE TABLE ${table} CASCADE;`);
+      const table = `"${SCHEMA_NAME}"."${row.table_name}"`;
+      await pool.query(`TRUNCATE TABLE ${table} RESTART IDENTITY CASCADE;`);
     }
+
   } catch (error) {
-    logger.error({ error });
+    logger.error("failed to clear: ", { error });
   } /*finally {
     console.log("Tables successfully cleared of data");
   }*/

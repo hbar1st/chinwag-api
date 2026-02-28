@@ -8,6 +8,8 @@ import { env } from "node:process";
 import { logger } from "./utils/logger.js";
 import passport from "./middleware/passport.js";
 
+import { v2 as cloudinary } from "cloudinary";
+
 import AppError from "./errors/AppError.js";
 import ValidationError from "./errors/ValidationError.js";
 import indexRouter from "./routers/indexRouter.js";
@@ -52,6 +54,21 @@ app.use(
     //methods: ["GET", "POST", "PUT", "OPTIONS"], // may not need this
   }),
 );
+
+async function setupCloudinary() {
+  logger.info("Setting up Cloudinary");
+
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+
+  // Log the configuration
+  logger.info(cloudinary.config());
+}
+
+setupCloudinary();
 
 // show all files in public folder
 
@@ -108,6 +125,7 @@ app.use((err, _req, res, _next) => {
       {
         res.status(err.statusCode);
         if (err instanceof ValidationError) {
+          logger.warn("found validation error to handle")
           res.json({
             statusCode: err.statusCode,
             timestamp: err.timestamp,

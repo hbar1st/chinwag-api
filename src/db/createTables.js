@@ -23,6 +23,7 @@ export async function createTables() {
   const sqlFilePath = path.join(currentDirname, "setup-tables.sql");
   const sqlCode = fs.readFileSync(sqlFilePath, "utf8");
 
+  console.log("sql statement to use: ", sqlCode)
   try {
     await pool.query(sqlCode);
   } catch (err) {
@@ -38,7 +39,8 @@ export async function clearTables() {
   const { tables } =  await pool.query(
     "SELECT table_name FROM information_schema.tables WHERE table_schema='chinwag' AND table_type='BASE TABLE';");
 
-  for (const table in tables) {
-    console.log(table)
-  }
+    for (const row of tables) {
+      const table = `"chinwag"."${row.table_name}"`;
+      await pool.query(`TRUNCATE TABLE ${table} RESTART IDENTITY CASCADE;`);
+    }
 }
