@@ -1,7 +1,6 @@
 import { pool } from "./pool.js";
 import { logger } from "../utils/logger.js";
 
-
 import AppError from "../errors/AppError.js";
 
 export async function findOtherUser(userId, email) {
@@ -24,12 +23,15 @@ export async function findOtherUserByUsername(userId, username) {
 
 /**
  * Do a select from the view that joins the users table and the images table
- * @param {*} id 
- * @returns 
+ * @param {*} id
+ * @returns
  */
 export async function getUserProfile(id) {
   logger.info("in getUserProfile: ", { id });
-  const { rows } = await pool.query("SELECT * FROM chinwag.user_profile WHERE id=$1", [id]);
+  const { rows } = await pool.query(
+    "SELECT * FROM chinwag.user_profile WHERE id=$1",
+    [id],
+  );
   return rows[0]; //return only the first row only which hopefully exists
 }
 
@@ -80,8 +82,8 @@ export async function getUserPassword(username) {
 
 /**
  * deletes the user and the profile image but not their messages?
- * @param {} id 
- * @returns 
+ * @param {} id
+ * @returns
  */
 export async function deleteUser(id) {
   logger.info("in deleteUser: ", { id });
@@ -93,23 +95,26 @@ export async function deleteUser(id) {
     );
     return rows[0];
   } catch (error) {
-    logger.error("Add User Transaction failed:", error);
+    logger.error("Delete User Transaction failed:", error);
     throw error;
-  } 
+  }
 }
 
-export async function updateProfileImage(user_id, public_id, resource_type, secure_url, old_avatar_id) {
-  logger.info(
-    "in updateProfileImage: ",
-    {
-      user_id,
-      public_id,
-      resource_type,
-      secure_url,
-      old_avatar_id
-    },
-  );
-  
+export async function updateProfileImage(
+  user_id,
+  public_id,
+  resource_type,
+  secure_url,
+  old_avatar_id,
+) {
+  logger.info("in updateProfileImage: ", {
+    user_id,
+    public_id,
+    resource_type,
+    secure_url,
+    old_avatar_id,
+  });
+
   const client = await pool.connect();
   try {
     // use a transaction to keep the tables in sync
@@ -121,7 +126,7 @@ export async function updateProfileImage(user_id, public_id, resource_type, secu
       [secure_url, resource_type, public_id],
     );
 
-    logger.info("the new images row: ", rows)
+    logger.info("the new images row: ", rows);
     const avatar_id = rows[0].id;
 
     const result = await client.query(
@@ -131,21 +136,20 @@ export async function updateProfileImage(user_id, public_id, resource_type, secu
     );
 
     const user = result.rows[0];
-    
+
     logger.info("the initial data for user: ", result);
     user["avatar_url"] = rows[0].img_url;
     user["public_id"] = rows[0].public_id;
 
-    logger.info("the returned data for user: ", user)
+    logger.info("the returned data for user: ", user);
 
-    
     await client.query(`DELETE FROM chinwag.images WHERE id=${old_avatar_id};`);
-    
+
     await client.query("COMMIT");
     return user;
   } catch (error) {
     await client.query("ROLLBACK");
-    logger.error("Add User Transaction failed:", error);
+    logger.error("Update profile image - Transaction failed:", error);
     throw error;
   } finally {
     client.release();
@@ -200,15 +204,8 @@ export async function addNewUser(username, email, nickname, password) {
   }
 }
 
-
-
-export async function updateUser(id, {
-  username,
-  email,
-  nickname,
-  avatar_id
-}) {
-  logger.info(`in updateUser: ${id}`, {username, email, nickname, avatar_id});
+export async function updateUser(id, { username, email, nickname, avatar_id }) {
+  logger.info(`in updateUser: ${id}`, { username, email, nickname, avatar_id });
 
   if (!id) {
     throw new AppError("Cannot update a user without an id");
@@ -218,7 +215,9 @@ export async function updateUser(id, {
   const params = [Number(id)];
 
   if (username) {
-    sqlsnip.push(`username=$${params.length + 1}${email||nickname ? "," : ""}`);
+    sqlsnip.push(
+      `username=$${params.length + 1}${email || nickname ? "," : ""}`,
+    );
     params.push(username);
   }
   if (email) {
@@ -227,12 +226,44 @@ export async function updateUser(id, {
   }
   if (nickname) {
     sqlsnip.push(`nickname=$${params.length + 1}`);
-    params.push(nickname)
+    params.push(nickname);
   }
   sqlsnip.push("WHERE id=$1 RETURNING id,username,email,nickname,avatar_id;");
-  logger.info(`Query to be run: ${sqlsnip.join(" ")}`)
+  logger.info(`Query to be run: ${sqlsnip.join(" ")}`);
 
   const { rows } = await pool.query(sqlsnip.join(" "), params);
   logger.info("updateUser query result: ", rows);
   return rows[0];
+}
+
+export async function deleteProfileImage(user_id, avatar_id) {
+  logger.info("in deleteProfileImage: ", {
+    user_id, avatar_id
+  });
+
+  const client = await pool.connect();
+  try {
+    // use a transaction to keep the tables in sync
+    await client.query("BEGIN");
+
+    const result = await client.query(`UPDATE chinwag.users SET avatar_id = null WHERE id = $1`, [user_id]);
+
+    if (result.rows) {
+      const { rows } = await client.query(
+        `DELETE FROM chinwag.images WHERE id=$1 RETURNING public_id;`,
+        [avatar_id],
+      );
+
+      await client.query("COMMIT");
+      return rows[0];
+    } else {
+      throw new AppError("Failed to update the user row's avatar_id");
+    }
+  } catch (error) {
+    await client.query("ROLLBACK");
+    logger.error("Update avatar - Transaction failed:", error);
+    throw error;
+  } finally {
+    client.release();
+  }
 }

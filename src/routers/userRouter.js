@@ -53,6 +53,10 @@ userRouter
     passport.authenticate("jwt", { session: false }),
     userController.getProfileImage,
   )
+  .delete(
+    passport.authenticate("jwt", { session: false }),
+    userController.deleteProfileImage,
+  )
   .put(
     passport.authenticate("jwt", { session: false }),
     userValidator.validateImage,
