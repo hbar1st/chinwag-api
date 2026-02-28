@@ -266,14 +266,13 @@ describe("PUT /user/image", () => {
       .attach("image", redIconFile);
       
       expect(res.status).toEqual(200);
-      console.log("the data: ", res.body.data);
       expect(res.body.data.avatar_id).toBeDefined();
       expect(res.body.data.public_id).toBeDefined();
       expect(res.body.data.avatar_url).toBeDefined();
-
+      
       const old_avatar_id = res.body.data.avatar_id;    
       const old_public_id = res.body.data.public_id;
-
+      
       const user = await request(app)
       .put(`${route}/image`)
       .set("Authorization", bearerToken)
@@ -284,17 +283,51 @@ describe("PUT /user/image", () => {
       expect(user.body.data.avatar_url).toBeDefined();
       
       expect(user.body.data.avatar_id).not.toEqual(old_avatar_id);
-
+      
       const destroySpy = vi.spyOn(cloudinary.uploader, "destroy");
       
       expect(destroySpy).toHaveBeenCalled(1);
       expect(destroySpy).toHaveBeenCalledWith(old_public_id);
-
+      
       const sql = `SELECT * from chinwag.images WHERE id='${old_avatar_id}';`;
       
       const rows = (await pool.query(sql)).rows;
       expect(rows.length).toBe(0);
+      
+      destroySpy.mockClear();
+    });
+    
+    test("delete avatar", async () => {
+      
+      const uploadSpy = vi.spyOn(cloudinary.uploader, "upload_stream");
+      // spy on the image destroy to confirm it worked
+      const destroySpy = vi.spyOn(cloudinary.uploader, "destroy");
+      
+      //first upload an image
+      const res = await request(app)
+      .put(`${route}/image`)
+      .set("Authorization", bearerToken)
+      .attach("image", redIconFile);
+      
+      expect(res.status).toEqual(200);
+      console.log("this data: ", res.body.data);
+      expect(res.body.data.avatar_id).toBeDefined();
+      expect(res.body.data.avatar_url).toBeDefined();
+      expect(uploadSpy).toHaveBeenCalledOnce();
+      
+      const public_id = res.body.data.public_id;
+      
+      // now delete the avatar again
+      const user = await request(app)
+      .delete(`${route}/image`)
+      .set("Authorization", bearerToken);
+      
+      expect(user.status).toEqual(204);
+      
+      expect(destroySpy).toHaveBeenCalled(1);
+      expect(destroySpy).toHaveBeenCalledWith(public_id);
 
+      uploadSpy.mockClear();
       destroySpy.mockClear();
     });
   })

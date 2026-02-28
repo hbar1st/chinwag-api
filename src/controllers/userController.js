@@ -198,7 +198,9 @@ export async function uploadProfileImage(req, res) {
         //options.public_id = imageRow.public_id.split("/")[1];
         logger.info("the userRow: ", userRow);
         try {
-          await Image.deleteImage(userProfile.public_id); //clean up old image in cloudinary first
+          if (userRow.avatar_id) {
+            await Image.deleteImage(userProfile.public_id); //clean up old image in cloudinary first
+          }
          // await userQueries.removeOldImage(userProfile.avatar_id)
         } catch (err) {
           
@@ -259,6 +261,28 @@ export async function deleteUser(req, res) {
   }
 }
 
+export async function deleteProfileImage(req, res) {
+  const user = req.user;
+  logger.info(`authenticated user: `, user);
+  try {
+    const rows = await userQueries.deleteProfileImage(user.id, user.avatar_id);
+    logger.info("the deleted user row: ", rows);
+    if (rows && rows.public_id) {
+      //clean up the image from cloudinary if it is not null
+      await Image.deleteImage(rows.public_id); //clean up image in cloudinary too
+      res.status(204).end();
+    } else if (rows) {
+      res.status(204).end();
+    }
+    throw new AppError("Failed to delete the profile image");
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    } else {
+      throw new AppError("Failed to delete profile image -", 500, error);
+    }
+  }
+}
 export async function updateUser(req, res) {
   // if user wants to change the password, we need to re-hash it before storing it
   // other values the user may change are: email/username

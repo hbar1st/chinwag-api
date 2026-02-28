@@ -57,9 +57,9 @@ Once phase 1 is done, contributions may be accepted if an issue is opened and tr
 - [] GET /user?username={}  [list by username - will return an id, nickname and profile image only if the auth user is not this same user]
 - [] GET /user?email={} [list by email - will return an id, nickname and a profile image only if the auth user is not this same user]
 - [x] PUT /user  [change the username/email/nickname/password of a user]
-- [] GET /user/image 
-- [] PUT /user/image [ change the authenticated user's profile image - uploads to Cloudinary]
-- [] DELETE /user/image [delete the authenticated user's profile image - deletes from Cloudinary]
+- [x] GET /user/image 
+- [x] PUT /user/image [ change the authenticated user's profile image - uploads to Cloudinary]
+- [x] DELETE /user/image [delete the authenticated user's profile image - deletes from Cloudinary]
 - [x] DELETE /user [delete the user account]
 
 - POST /chat/:id/message [in the form: the recipient id, the message, any images]
