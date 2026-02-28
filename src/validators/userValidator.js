@@ -330,21 +330,22 @@ export const validateUserLoginFields = [
   ),
 ];
 
-export async function validateImage(req, res) {
+export async function validateImage(req, res, next) {
   logger.info("in validateImage")
   try {
     await runMulter(req, res)
     if (!req.file) {
       throw new ValidationError('File is required');
     }
-    logger.info("req.file: ", req.file);
-    res.status(200).end();
+    next();
   } catch (error) {
     logger.warn("validateImage has failed to validate the image")
     if (error instanceof AppError) {
       throw error;
     } else if (error instanceof MulterError && error.message === "File too large") {
       throw new ValidationError("Image is too large. Max size is 10MiB.");
+    } else if (error instanceof MulterError) {
+      throw new ValidationError(error.message);
     } else {
       throw error;
     }

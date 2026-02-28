@@ -23,6 +23,7 @@ export async function createTables() {
   const sqlFilePath = path.join(currentDirname, "setup-tables.sql");
   const sqlCode = fs.readFileSync(sqlFilePath, "utf8");
 
+  console.log("sql statement to use: ", sqlCode)
   try {
     await pool.query(sqlCode);
   } catch (err) {

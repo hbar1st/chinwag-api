@@ -7,5 +7,16 @@ export default defineConfig({
     reporters: ["verbose"],
     disableConsoleIntercept: true,
     bail: 1,
+    fileParallelism: false,
+    pool: "threads", // or "forks"
+    poolOptions: {
+      threads: {
+        singleThread: true,
+      },
+      // forks can also use singleThread: true
+      forks: {
+        singleThread: true,
+      },
+    },
   },
 });

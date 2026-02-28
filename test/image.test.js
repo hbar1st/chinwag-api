@@ -1,16 +1,72 @@
 /* eslint-disable no-console */
 
-import { describe, test, expect, afterAll, beforeAll } from "vitest";
+import { describe, test, expect, afterAll, beforeAll, vi } from "vitest";
 import request from "supertest";
 
 import * as path from 'path';
-/*
-import { logger } from "../src/utils/logger.js";
+
 import { pool } from "../src/db/pool.js";
-*/
+
+vi.mock("cloudinary", () => {
+  const upload_stream = vi.fn();
+  
+  upload_stream
+  .mockImplementationOnce((options, cb) => ({
+    end: () =>
+      cb(null, {
+      public_id: "first_upload",
+      secure_url: "https://example.com/first.jpg",
+      resource_type: "image",
+    }),
+  }))
+  .mockImplementationOnce((options, cb) => ({
+    end: () =>
+      cb(null, {
+      public_id: "second_upload",
+      secure_url: "https://example.com/second.jpg",
+      resource_type: "image",
+    }),
+  }))
+  .mockImplementation((options, cb) => ({
+    end: () =>
+      cb(null, {
+      public_id: "default_upload",
+      secure_url: "https://example.com/default.jpg",
+      resource_type: "image",
+    }),
+  }));
+  
+  return {
+    v2: {
+      config: vi.fn(),
+      uploader: {
+        upload_stream,
+        destroy: vi.fn(async (publicId) => ({
+          result: "ok",
+          public_id: publicId,
+          resource_type: "image",
+        })),
+      },
+      api: {
+        delete_resources_by_tag: vi.fn((tag, cb) => {
+          cb(null, { deleted: ["img1", "img2"] });
+        }),
+      },
+    },
+  };
+});
+
+import { v2 as cloudinary } from "cloudinary";
+
+
+import  Image from "../src/utils/Image.js";
+
 import { runMulter } from "../src/middleware/multer.js"
 
 import { clearAllTables } from "../src/db/dbutil.js";
+import logger from "../src/utils/logger.js";
+
+//import logger from "../src/utils/logger.js";
 
 //const STD_VALIDATION_MSG = "Action has failed due to some validation errors";
 let app;
@@ -31,10 +87,13 @@ beforeAll(async () => {
   app = mod.app;
   prefix = mod.prefix;
   route = `${prefix}/user`;
+  
+  await Image.deleteAll();
 });
 
 afterAll(async () => {
   await clearAllTables();
+  await Image.deleteAll();
 });
 
 describe("Profile Image", () => {
@@ -54,6 +113,7 @@ describe("Profile Image", () => {
     beforeAll(async () => {
       
       await clearAllTables();
+      await Image.deleteAll();
       //signup first
       let res = await request(app)
       .post(`${route}/signup`)
@@ -62,6 +122,7 @@ describe("Profile Image", () => {
       
       expect(res.headers["content-type"]).toMatch(/json/);
       expect(res.status).toEqual(201);
+      logger.info("the signed in user: ", res.body.data)
       //user = res.body.data;
       // then login to get the jwt header
       res = await request(app)
@@ -77,6 +138,8 @@ describe("Profile Image", () => {
     
     afterAll(async () => {
       await clearAllTables();
+      
+      await Image.deleteAll();
     });
     //test getter when image is null
     test("Get profile image - null", async () => {
@@ -87,8 +150,6 @@ describe("Profile Image", () => {
       expect(res.status).toEqual(200);
       expect(res.body.data["avatar_id"]).toBeNull();
     });
-    //test getter when image is assigned a url
-    test("Get profile image - defined", async () => {});
   });
 });
 
@@ -161,23 +222,80 @@ describe("PUT /user/image", () => {
     test("Large file", async () => {
       const req = { file: { mimetype: "image/png", buffer: Buffer.alloc(2000) } };
       const res = {};
-
+      
       await expect(
         runMulter(req, res, { maxFileSize: 1000 }), // override to a smaller value for test
       ).rejects.toThrow();
-
+      
     });
     // happy path when initially avatar_id is null (image should be on cloudinary too)
     test("set initial avatar", async () => {
+      // spy on the image upload to confirm it worked?
+      const uploadSpy = vi.spyOn(cloudinary.uploader, "upload_stream");
+      
       const res = await request(app)
-        .put(`${route}/image`)
-        .set("Authorization", bearerToken)
-        .attach("image", redIconFile);
+      .put(`${route}/image`)
+      .set("Authorization", bearerToken)
+      .attach("image", redIconFile);
       
       expect(res.status).toEqual(200);
-      expect(res.body.data.avatar_id).toEqual(1)
+      console.log("this data: ", res.body.data);
+      expect(res.body.data.avatar_id).toBeDefined();
+      expect(res.body.data.avatar_url).toBeDefined();
+      expect(uploadSpy).toHaveBeenCalledOnce();
+      
+      const avatar_id = res.body.data.avatar_id;
+      
+      const user = await request(app)
+      .get(`${route}/image`)
+      .set("Authorization", bearerToken);
+      
+      expect(user.status).toEqual(200);
+      expect(user.body.data.avatar_id).toBeDefined();
+      expect(user.body.data.avatar_id).toEqual(avatar_id);
+      uploadSpy.mockClear();
+      
     });
     // happy path when avatar_id has another image (image should be gone from cloudinary too)
-    // delete user should clear the cloudinary image too and the image rows (move this to the delete test suite)
+    test("update avatar", async () => {
+      
+      // set initial avatar
+      const res = await request(app)
+      .put(`${route}/image`)
+      .set("Authorization", bearerToken)
+      .attach("image", redIconFile);
+      
+      expect(res.status).toEqual(200);
+      console.log("the data: ", res.body.data);
+      expect(res.body.data.avatar_id).toBeDefined();
+      expect(res.body.data.public_id).toBeDefined();
+      expect(res.body.data.avatar_url).toBeDefined();
+
+      const old_avatar_id = res.body.data.avatar_id;    
+      const old_public_id = res.body.data.public_id;
+
+      const user = await request(app)
+      .put(`${route}/image`)
+      .set("Authorization", bearerToken)
+      .attach("image", redIconFile);
+      
+      expect(user.status).toEqual(200);
+      expect(user.body.data.avatar_id).toBeDefined();
+      expect(user.body.data.avatar_url).toBeDefined();
+      
+      expect(user.body.data.avatar_id).not.toEqual(old_avatar_id);
+
+      const destroySpy = vi.spyOn(cloudinary.uploader, "destroy");
+      
+      expect(destroySpy).toHaveBeenCalled(1);
+      expect(destroySpy).toHaveBeenCalledWith(old_public_id);
+
+      const sql = `SELECT * from chinwag.images WHERE id='${old_avatar_id}';`;
+      
+      const rows = (await pool.query(sql)).rows;
+      expect(rows.length).toBe(0);
+
+      destroySpy.mockClear();
+    });
   })
 });

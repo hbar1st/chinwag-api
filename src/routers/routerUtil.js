@@ -11,6 +11,9 @@ export function handleExpressValidationErrors(req, res, next) {
     logger.info("no validation errors recorded")
   }
   if (!errors.isEmpty()) {
+    logger.warn(`request url: ${req.url }`);
+    
+    logger.warn(`request body: `, req.body)
     throw new ValidationError(
       "Action has failed due to some validation errors",
       errors.array(),

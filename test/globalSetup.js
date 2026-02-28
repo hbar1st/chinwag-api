@@ -7,6 +7,7 @@ import { pool } from "../src/db/pool.js";
 // Load .env.test BEFORE anything else runs
 config({ path: ".env.test" });
 
+import Image from "../src/utils/Image.js"
 
 import { createTables } from "../src/db/createTables.js";
 //import { clearAllTables } from "../src/db/dbutil.js";
@@ -15,6 +16,7 @@ export async function setup() {
   console.log("global setup is running");
 
   await createTables();
+  await Image.deleteAll();
 }
 
 
