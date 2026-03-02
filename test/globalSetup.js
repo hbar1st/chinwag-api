@@ -1,6 +1,4 @@
-/* eslint-disable no-console */
 // use this file to setup the tables for testing and clear them up at the end of each run
-/* eslint-disable no-console */
 import { config } from "dotenv";
 import { pool } from "../src/db/pool.js";
 

@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 
-import { describe, test, expect, afterAll, beforeAll, vi } from "vitest";
+import { describe, test, expect, afterAll, beforeAll, vi, onTestFinished } from "vitest";
 import request from "supertest";
 
 import * as path from 'path';
@@ -11,7 +11,7 @@ vi.mock("cloudinary", () => {
   const upload_stream = vi.fn();
   
   upload_stream
-  .mockImplementationOnce((options, cb) => ({
+  .mockImplementationOnce((_options, cb) => ({
     end: () =>
       cb(null, {
       public_id: "first_upload",
@@ -19,7 +19,7 @@ vi.mock("cloudinary", () => {
       resource_type: "image",
     }),
   }))
-  .mockImplementationOnce((options, cb) => ({
+  .mockImplementationOnce((_options, cb) => ({
     end: () =>
       cb(null, {
       public_id: "second_upload",
@@ -27,7 +27,7 @@ vi.mock("cloudinary", () => {
       resource_type: "image",
     }),
   }))
-  .mockImplementation((options, cb) => ({
+  .mockImplementation((_options, cb) => ({
     end: () =>
       cb(null, {
       public_id: "default_upload",
@@ -48,7 +48,7 @@ vi.mock("cloudinary", () => {
         })),
       },
       api: {
-        delete_resources_by_tag: vi.fn((tag, cb) => {
+        delete_resources_by_tag: vi.fn((_tag, cb) => {
           cb(null, { deleted: ["img1", "img2"] });
         }),
       },
@@ -66,9 +66,6 @@ import { runMulter } from "../src/middleware/multer.js"
 import { clearAllTables } from "../src/db/dbutil.js";
 import logger from "../src/utils/logger.js";
 
-//import logger from "../src/utils/logger.js";
-
-//const STD_VALIDATION_MSG = "Action has failed due to some validation errors";
 let app;
 let prefix;
 let route;
@@ -141,6 +138,7 @@ describe("Profile Image", () => {
       
       await Image.deleteAll();
     });
+    
     //test getter when image is null
     test("Get profile image - null", async () => {
       const res = await request(app)
@@ -294,7 +292,10 @@ describe("PUT /user/image", () => {
       const rows = (await pool.query(sql)).rows;
       expect(rows.length).toBe(0);
       
-      destroySpy.mockClear();
+      onTestFinished(async () => {
+        clearAllTables();
+        destroySpy.mockClear();
+      });
     });
     
     test("delete avatar", async () => {
@@ -326,7 +327,7 @@ describe("PUT /user/image", () => {
       
       expect(destroySpy).toHaveBeenCalled(1);
       expect(destroySpy).toHaveBeenCalledWith(public_id);
-
+      
       uploadSpy.mockClear();
       destroySpy.mockClear();
     });

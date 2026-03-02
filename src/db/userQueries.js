@@ -53,13 +53,27 @@ export async function getUserByUsername(username) {
   return rows[0];
 }
 
-export async function getUserById(id) {
-  logger.info("in getUserById: ", { id });
-  const { rows } = await pool.query(
+export async function getUserById(id, updateActive = false) {
+  logger.info("in getUserById: ", { id, updateActive });
+  let { rows } = await pool.query(
     "SELECT id,username,email,nickname,avatar_id FROM chinwag.users WHERE id=$1;",
     [id],
   );
-  return rows[0];
+  // update the activity table
+  try {
+    const activityRows = await pool.query(
+      `INSERT INTO chinwag.activity (user_id)
+        VALUES ($1)
+        ON CONFLICT (user_id)
+        DO UPDATE SET last_active = now() RETURNING last_active`,
+      [id],
+    );
+    rows = { ...rows[0], last_active: activityRows.rows[0].last_active }
+  } catch (err) {
+    logger.error("Failed to update activity table:", err);
+    // DO NOT throw to avoid rolling back the whole transaction
+  }
+  return rows;
 }
 
 export async function getUserPasswordById(id) {
@@ -143,7 +157,25 @@ export async function updateProfileImage(
 
     logger.info("the returned data for user: ", user);
 
-    await client.query(`DELETE FROM chinwag.images WHERE id=${old_avatar_id};`);
+    await client.query(`DELETE FROM chinwag.images WHERE id=$1;`,[old_avatar_id]);
+    // update the activity table
+    await client.query("SAVEPOINT sp1");
+
+    // Activity update — failure should NOT rollback the transaction
+    try {
+      await client.query(
+        `INSERT INTO chinwag.activity (user_id)
+         VALUES ($1)
+         ON CONFLICT (user_id)
+         DO UPDATE SET last_active = now();`,
+        [user_id]
+      );
+
+    } catch (err) {
+      await client.query("ROLLBACK TO SAVEPOINT sp1");
+      logger.error("Failed to update activity table:", err);
+      // DO NOT throw to avoid rolling back the whole transaction
+    }
 
     await client.query("COMMIT");
     return user;
@@ -253,6 +285,23 @@ export async function deleteProfileImage(user_id, avatar_id) {
         `DELETE FROM chinwag.images WHERE id=$1 RETURNING public_id;`,
         [avatar_id],
       );
+
+      await client.query("SAVEPOINT sp1");
+
+      // Activity update — failure should NOT rollback the transaction
+      try {
+        await client.query(
+          `INSERT INTO chinwag.activity (user_id)
+         VALUES ($1)
+         ON CONFLICT (user_id)
+         DO UPDATE SET last_active = now();`,
+          [user_id],
+        );
+      } catch (err) {
+        await client.query("ROLLBACK TO SAVEPOINT sp1");
+        logger.error("Failed to update activity table:", err);
+        // DO NOT throw to avoid rolling back the whole transaction
+      }
 
       await client.query("COMMIT");
       return rows[0];

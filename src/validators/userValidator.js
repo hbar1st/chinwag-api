@@ -19,13 +19,14 @@ import AppError from "../errors/AppError.js";
  * @param {*} optional
  * @param {*} isParam is true if the uid is in the route params, otherwise it is assumed it is in the body
  */
-const checkUserId = (isParam) => {
-  const ch1 = isParam ? param("id") : body("id");
+export const checkUserId = (isParam, name="id") => {
+  const ch1 = isParam ? param(name) : body(name);
   return ch1
     .trim()
     .notEmpty()
     .withMessage("A user id is required to complete the request.")
     .bail()
+    .toInt()
     .custom(async (value) => {
       logger.info(`try to validate if the user id exists: ${value}`);
       try {

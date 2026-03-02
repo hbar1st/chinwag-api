@@ -29,8 +29,8 @@ passport.use(
     );
     if (jwt_payload.sub) {
       try {
-        const user = await getUserById(jwt_payload.sub);
-
+        const user = await getUserById(jwt_payload.sub, true);
+        
         if (user) {
           
           logger.info("passport authenticated this user: ", user);
