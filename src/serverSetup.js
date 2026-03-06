@@ -14,6 +14,7 @@ import AppError from "./errors/AppError.js";
 import ValidationError from "./errors/ValidationError.js";
 import indexRouter from "./routers/indexRouter.js";
 import userRouter from "./routers/userRouter.js";
+import chatRouter from "./routers/chatRouter.js";
 import messageRouter from "./routers/messageRouter.js";
 
 const VERSION = "v1"
@@ -92,6 +93,9 @@ app.use(`/`, indexRouter);
 
 // the router for the user related actions like signup and login etc
 app.use(`${prefix}/user`, userRouter);
+
+// the router for the chats
+app.use(`${prefix}/chat`, chatRouter);
 
 // the router for the message related actions
 app.use(`${prefix}/message`, messageRouter);
