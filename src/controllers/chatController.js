@@ -27,7 +27,6 @@ export async function getAllChats(req, res) {
 }
 
 export async function getChatMessages(req, res) {
-  const user = req.user;
   logger.info("in getChatMessages");
   
   const data = matchedData(req);
@@ -43,6 +42,57 @@ export async function getChatMessages(req, res) {
   }
 }
 
+export async function leaveChat(req, res) {  
+  try {
+    const user = req.user;
+
+    const data = matchedData(req);
+    // the chat will only get removed if this is the last user to leave
+    // if the case of group chats, we would want the chat to be deleted if this is the last admin to leave
+    logger.info(`in leaveChat controller, ${user.id}`, data)
+    const rows = await chatQueries.leaveChat(data.id, user.id);
+    if (rows && rows.length == 0) {
+      await chatQueries.clearChat(req.chat_id);
+    }
+    res.status(204).end(); 
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    } else {
+      throw new AppError("Failed to get a list of chats -", 500, error);
+    }
+  }
+}
+
+export async function getChat(req, res) {
+  try {
+    const user = req.user;
+
+    const data = matchedData(req);
+    
+    const rows = await chatQueries.getChat(data.id, user.id);
+    
+    const status = rows.length ? 200 : 204;
+    res.status(status).json({ data: rows });
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    } else {
+      throw new AppError("Failed to get a the chat -", 500, error);
+    }
+  }
+}
+export async function addMessage(req, res) {
+  try {
+    res.status(200).end(); //temporary
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    } else {
+      throw new AppError("Failed to get a list of chats -", 500, error);
+    }
+  }
+}
 /**
 * Either the target user has an ongoing chat already with the authenticated user or they don't
 * if they don't, we make a new chat row, otherwise, we return the existing chat id
