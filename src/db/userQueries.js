@@ -60,20 +60,25 @@ export async function getUserById(id, updateActive = false) {
     [id],
   );
   // update the activity table
-  try {
-    const activityRows = await pool.query(
-      `INSERT INTO chinwag.activity (user_id)
+  if (rows.length) {
+    try {
+      const activityRows = await pool.query(
+        `INSERT INTO chinwag.activity (user_id)
         VALUES ($1)
         ON CONFLICT (user_id)
         DO UPDATE SET last_active = now() RETURNING last_active`,
-      [id],
-    );
-    rows = { ...rows[0], last_active: activityRows.rows[0].last_active }
-  } catch (err) {
-    logger.error("Failed to update activity table:", err);
-    // DO NOT throw to avoid rolling back the whole transaction
+        [id],
+      );
+      rows = { ...rows[0], last_active: activityRows.rows[0].last_active }
+    } catch (err) {
+      logger.error("Failed to update activity table:", err);
+      // DO NOT throw to avoid rolling back the whole transaction
+    }
+    
+    return rows;
+  } else {
+    return rows[0]
   }
-  return rows;
 }
 
 export async function getUserPasswordById(id) {

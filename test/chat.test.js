@@ -7,9 +7,6 @@ import {
   afterEach,
   beforeAll,
   afterAll,
-  onTestFinished,
-  onTestFailed,
-  skip,
   beforeEach,
   vi
 } from "vitest";
@@ -65,7 +62,6 @@ vi.mock("cloudinary", () => {
   };
 });
 
-import { v2 as cloudinary } from "cloudinary";
 
 import Image from "../src/utils/Image.js";
 
@@ -104,6 +100,7 @@ const chatUser2 = {
   email: "testuser-e@email.com",
 };
 
+// setup some users and the currently authenticated user
 beforeAll(async () => {
   
   await clearAllTables();
@@ -166,76 +163,111 @@ afterAll(async () => {
 describe("chat tests", () => {
   // list should be sorted by the one that was the most recently active (nearest to the top)
   //   in future, I may allow chats to be archived?
-
+  
   describe("Get Chat", () => {
     test("Unauthorized User", async () => {
       const res = await request(app)
-        .get(`${chatRoute}`)
-        .set("Accept", "application/json");
-
+      .get(`${chatRoute}`)
+      .set("Accept", "application/json");
+      
       expect(res.status).toEqual(401);
     });
-
+    
     describe("Auth User", () => {
-      // test getting a specific chat by id if an ongoing chat exists
-      // (top level info only like name of person we are talking to and the count of new messages if any)
-
       // test getting a list of all ongoing chats when there are none defined
       test("Get Blank Chat List", async () => {
         const res = await request(app)
-          .get(`${chatRoute}`)
-          .set("Accept", "application/json")
-          .set("Authorization", bearerToken);
-
+        .get(`${chatRoute}`)
+        .set("Accept", "application/json")
+        .set("Authorization", bearerToken);
+        
         expect(res.status).toEqual(200);
         expect(res.body.data).toBeDefined();
         expect(res.body.data.length).toBe(0);
       });
-
+      
       // test getting a specific chat by id if no ongoing chat exists (should fail)
       test("Get NonExistant Chat By Id", async () => {
         const res = await request(app)
-          .get(`${chatRoute}/10000`)
-          .set("Accept", "application/json")
-          .set("Authorization", bearerToken);
-
+        .get(`${chatRoute}/10000`)
+        .set("Accept", "application/json")
+        .set("Authorization", bearerToken);
+        
         expect(res.status).toEqual(404);
       });
-
+      
       describe("Ongoing Chat Tests", () => {
         let chat1_id = 0;
         let chat2_id = 0;
-
+        
         beforeEach(async () => {
           const res = await request(app)
-            .post(`${chatRoute}`)
-            .set("Accept", "application/json")
-            .set("Authorization", bearerToken)
-            .send({ user_id: chatUser1.id });
-
+          .post(`${chatRoute}`)
+          .set("Accept", "application/json")
+          .set("Authorization", bearerToken)
+          .send({ user_id: chatUser1.id });
+          
           expect(res.status).toEqual(201);
           chat1_id = res.body.data.id;
-
+          
           const res2 = await request(app)
-            .post(`${chatRoute}`)
-            .set("Accept", "application/json")
-            .set("Authorization", bearerToken)
-            .send({ user_id: chatUser2.id });
-
+          .post(`${chatRoute}`)
+          .set("Accept", "application/json")
+          .set("Authorization", bearerToken)
+          .send({ user_id: chatUser2.id });
+          
           expect(res2.status).toEqual(201);
           chat2_id = res2.body.data.id;
         });
         afterEach(async () => {
           await clearAllTables();
         });
-
-        // test getting a list of all ongoing chats when there are some defined but all have zero new messages
-        test("Get All Chats ", async () => {
+        
+        // test leaving a chat (leaving a chat should mean that a GET /chat should return the ongoing chats minus this one we left)
+        test("Leave A Chat", async () => {
           const res = await request(app)
+            .delete(`${chatRoute}/${chat2_id}`)
+            .set("Accept", "application/json")
+            .set("Authorization", bearerToken);
+
+          expect(res.status).toEqual(204);
+          
+          const resCheck = await request(app)
             .get(`${chatRoute}`)
             .set("Accept", "application/json")
             .set("Authorization", bearerToken);
 
+          expect(resCheck.status).toEqual(200);
+          expect(resCheck.body.data.length).toEqual(1)
+
+          // try to get the chat we left, should not work
+          const findChatRes = await request(app)
+            .get(`${chatRoute}/${chat2_id}`)
+            .set("Accept", "application/json")
+            .set("Authorization", bearerToken);
+
+          expect(findChatRes.status).toEqual(204); //no results
+        });
+
+        // test getting a specific chat by id if an ongoing chat exists (and auth user is an active member vs one who has left)
+        // (top level info only like name of person we are talking to and the count of new messages if any)
+        /* may not need this actually
+        test("Get Chat By Id", async () => {
+          const res = await request(app)
+          .get(`${chatRoute}/${chat2_id}`)
+          .set("Accept", "application/json")
+          .set("Authorization", bearerToken);
+          
+          expect(res.status).toEqual(201);
+        });
+        */
+        // test getting a list of all ongoing chats when there are some defined but all have zero new messages
+        test("Get All Chats ", async () => {
+          const res = await request(app)
+          .get(`${chatRoute}`)
+          .set("Accept", "application/json")
+          .set("Authorization", bearerToken);
+          
           expect(res.status).toEqual(200);
           expect(res.body.data).toBeDefined();
           console.log("the results: ", res.body.data);
@@ -255,6 +287,7 @@ describe("chat tests", () => {
         });
       });
     });
+    
   });
 
   // test setting up a chat with another user
@@ -262,67 +295,67 @@ describe("chat tests", () => {
     // unauthorized user tries to make a new chat
     test("Unauthorized User", async () => {
       const res = await request(app)
-        .post(`${chatRoute}`)
-        .set("Accept", "application/json")
-        .send({ user_id: chatUser1.id });
+      .post(`${chatRoute}`)
+      .set("Accept", "application/json")
+      .send({ user_id: chatUser1.id });
       expect(res.status).toEqual(401);
     });
-
+    
     // authorized user tries to make a chat with himself (What's app lets you do that but that's not a feature I want)
     describe("Authorized User", () => {
       // authorized user tries to make a new chat with user that doesn't exist (bad id)
       test("Chat-to a non-existant user", async () => {
         const res = await request(app)
-          .post(`${chatRoute}`)
-          .set("Accept", "application/json")
-          .set("Authorization", bearerToken)
-          .send({ user_id: 10000 });
-
+        .post(`${chatRoute}`)
+        .set("Accept", "application/json")
+        .set("Authorization", bearerToken)
+        .send({ user_id: 10000 });
+        
         expect(res.status).toEqual(400);
-
+        
         expect(res.body.message).toEqual(STD_VALIDATION_MSG);
         expect(res.body.data).toBeDefined();
         expect(res.body.data.length).toBeGreaterThan(0);
         expect(res.body.data[0].msg).toEqual("This user id is invalid.");
       });
-
+      
       // authorized user tries to make a new chat with user id that is an invalid value
       test("Chat to an invalid user id", async () => {
         const res = await request(app)
-          .post(`${chatRoute}`)
-          .set("Accept", "application/json")
-          .set("Authorization", bearerToken)
-          .send({ user_id: -1 });
-
+        .post(`${chatRoute}`)
+        .set("Accept", "application/json")
+        .set("Authorization", bearerToken)
+        .send({ user_id: -1 });
+        
         expect(res.status).toEqual(400);
-
+        
         expect(res.body.message).toEqual(STD_VALIDATION_MSG);
         expect(res.body.data).toBeDefined();
         expect(res.body.data.length).toBeGreaterThan(0);
         expect(res.body.data[0].msg).toEqual("This user id is invalid.");
       });
-
+      
       test("User cannot chat to himself", async () => {
         const res = await request(app)
-          .post(`${chatRoute}`)
-          .set("Accept", "application/json")
-          .set("Authorization", bearerToken)
-          .send({ user_id: user.id });
-
+        .post(`${chatRoute}`)
+        .set("Accept", "application/json")
+        .set("Authorization", bearerToken)
+        .send({ user_id: user.id });
+        
         expect(res.status).toEqual(400);
         expect(res.body.message).toEqual(STD_VALIDATION_MSG);
         expect(res.body.data).toBeDefined();
         expect(res.body.data.length).toBeGreaterThan(0);
         expect(res.body.data[0].msg).toEqual("Invalid value");
       });
-
+      
       // authorized user tries to chat but there is no body fields
       test("Missing body fields", async () => {
         const res = await request(app)
-          .post(`${chatRoute}`)
-          .set("Accept", "application/json")
-          .set("Authorization", bearerToken);
-
+        .post(`${chatRoute}`)
+        .set("Accept", "application/json")
+        .set("Authorization", bearerToken);
+        
         expect(res.status).toEqual(400);
         expect(res.body.message).toEqual(STD_VALIDATION_MSG);
         expect(res.body.data).toBeDefined();
@@ -334,34 +367,75 @@ describe("chat tests", () => {
       // authorized user tries to make a new chat with a valid user (by id) which is not the authenticated user id
       test("Happy Path", async () => {
         const res = await request(app)
-          .post(`${chatRoute}`)
-          .set("Accept", "application/json")
-          .set("Authorization", bearerToken)
-          .send({ user_id: chatUser1.id });
-
+        .post(`${chatRoute}`)
+        .set("Accept", "application/json")
+        .set("Authorization", bearerToken)
+        .send({ user_id: chatUser1.id });
+        
         expect(res.status).toEqual(201);
         expect(res.body.data).toBeDefined();
         expect(res.body.data.created_at).toBeDefined();
         expect(res.body.data.id).toBeTypeOf("number");
         expect(res.body.data.name).toBeDefined();
-
+        
         // check if the user is still a member of the chat
         const sql = `SELECT * FROM chinwag.chat_members WHERE chat_id=${res.body.data.id} AND user_id=${user.id};`;
-
+        
         const { rows } = await pool.query(sql);
         expect(rows.length).toBe(1);
         expect(rows[0].has_left).toBe(false);
       });
-
+      
       // tries to make a new chat with a user after leaving the chat first (should return the same original chat id from the first time)
       // in the middle the has_left flag should be set to true, then later false.
     });
   });
-
+  
   // test adding a message into a chat (no images)
-  // test getting the specific chat's messages (possibly paginated but in reverse chronological order)
-
+  describe("Add New Message tests", () => {
+    let chatId1 = 0; //between testUser and chatUser1
+    //let chatId2 = 0; //between testUser and chatUser2
+    
+    beforeEach(async () => {
+      const res = await request(app)
+      .post(`${chatRoute}`)
+      .set("Accept", "application/json")
+      .set("Authorization", bearerToken)
+      .send({ user_id: chatUser1.id });
+      
+      expect(res.status).toEqual(201);
+      chatId1 = res.body.data.id;
+      
+      const res2 = await request(app)
+      .post(`${chatRoute}`)
+      .set("Accept", "application/json")
+      .set("Authorization", bearerToken)
+      .send({ user_id: chatUser2.id });
+      
+      expect(res2.status).toEqual(201);
+      //chatId2 = res2.body.data.id;
+    });
+    
+    afterEach(async () => {
+      await clearAllTables();
+    });
+    
+    // unauthorized user tries to make a new message
+    test("Unauthorized User", async () => {
+      const res = await request(app)
+      .post(`${chatRoute}/${chatId1}/message`)
+      .set("Accept", "application/json");
+      
+      expect(res.status).toEqual(401);
+    });
+    //describe("Authorized User", () => {});
+  });
+  // test getting the specific chat's messages (possibly paginated but in reverse chronological order) as a member of the chat
+  // test getting a specific chat's messages as unauthorized user
+  // test getting a specific chat's messages as an authorized user who has never been a member of the chat
+  
   // test getting a list of all ongoing chats when there are some defined with some having new message counts
+  
   
   // test editing a specific message's contents (does this update the chronology of the chat display? leave it to client to decide)
   // test deleting a specific message

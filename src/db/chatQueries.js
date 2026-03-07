@@ -96,6 +96,43 @@ export async function getChats(user_id) {
   return rows;
 }
 
+export async function getChat(chat_id, user_id) {
+  logger.info("in getChat: ", { chat_id, user_id });
+  const { rows } = await pool.query(
+    `SELECT * FROM chinwag.chat_members WHERE chat_id = $1 AND has_left = FALSE AND user_id=$2`,
+    [chat_id, user_id],
+  );
+  return rows;
+}
+
+export async function leaveChat(chat_id, user_id) {
+  logger.info("in leaveChat", { chat_id, user_id });
+  await pool.query(
+    `UPDATE chinwag.chat_members SET has_left = TRUE WHERE chat_id = $1 AND user_id = $2;`, [chat_id,user_id]
+  );
+  const { rows } = await pool.query(
+    `SELECT 1 FROM chinwag.chat_members WHERE chat_id = $1 AND has_left = FALSE;`, [chat_id]
+  );
+  console.log("*****", rows)
+  return rows;
+}
+
+export async function clearChat(chat_id) {
+  logger.info("in clearChat: " + { chat_id });
+  await pool.query(
+    `DELETE FROM chinwag.chats AS cm WHERE cm.chat_id = $1;`, [chat_id]
+  );
+  return;
+}
+
+export async function getChatWithMember(chat_id, user_id) {
+  logger.info("in getChatWithMember: ", { chat_id, user_id });
+  const { rows } = await pool.query(
+    `SELECT 1 as found FROM chinwag.chat_members WHERE chat_id = $1 AND user_id = $2`,
+    [chat_id, user_id],
+  );
+  return rows[0];
+}
 
 /**
 *  Use this query with the same id to get the list of all the chats this user is in:
