@@ -73,6 +73,7 @@ let prefix;
 let user;
 let chatRoute;
 let userRoute;
+let messageRoute;
 let bearerToken;
 let user1BearerToken;
 
@@ -110,6 +111,7 @@ beforeAll(async () => {
   prefix = mod.prefix;
   chatRoute = `${prefix}/chat`;
   userRoute = `${prefix}/user`;
+  messageRoute = `${prefix}/message`
   
   await Image.deleteAll();
   
@@ -315,9 +317,173 @@ describe("chat tests", () => {
             count: 0,
           });
         });
+        
       });
     });
   });
+  
+  describe("Manage Chat Messages", () => {
+    let chatId1 = 0; //between testUser and chatUser1
+    let chatId2 = 0; //between testUser and chatUser2
+    
+    beforeEach(async () => {
+      // Ensure chats are properly cleaned before each test
+      await clearChatTables();
+      const res = await request(app)
+      .post(`${chatRoute}`)
+      .set("Accept", "application/json")
+      .set("Authorization", bearerToken)
+      .send({ user_id: chatUser1.id });
+      
+      expect(res.status).toEqual(201);
+      chatId1 = res.body.data.id;
+      
+      const res2 = await request(app)
+      .post(`${chatRoute}`)
+      .set("Accept", "application/json")
+      .set("Authorization", bearerToken)
+      .send({ user_id: chatUser2.id });
+      
+      expect(res2.status).toEqual(201);
+      chatId2 = res2.body.data.id;
+      
+      const messages1 = ["(1) First Message: testUser to 1st chat user.","(3): Continue convo"];
+      const messages2 = ["(2) First Message: 1st chat user to testUser.","(4): Continued response", "(5): More verbosity"]
+      
+      for (const msg of messages1) {
+        const sendMsgRes = await request(app)
+        .post(`${chatRoute}/${chatId1}/message`)
+        .set("Accept", "application/json")
+        .set("Authorization", bearerToken)
+        .send({ content: msg});
+        
+        expect(sendMsgRes.status).toEqual(201);
+      }
+      
+      for (const msg of messages2) {
+        const sendMsgRes = await request(app)
+        .post(`${chatRoute}/${chatId1}/message`)
+        .set("Accept", "application/json")
+        .set("Authorization", user1BearerToken)
+        .send({ content: msg });
+        
+        expect(sendMsgRes.status).toEqual(201);
+      }
+    });
+    
+    afterEach(async () => {
+      await clearChatTables();
+    });
+    //test unauthorized user
+    // unauthorized user tries to get chat messages
+    test("Unauthorized User", async () => {
+      const res = await request(app)
+      .get(`${chatRoute}/${chatId1}/message`)
+      .set("Accept", "application/json");
+      expect(res.status).toEqual(401);
+    });
+    
+    describe("Authorized User", () => {
+      // authorized user but bad chat id (invalid or doesn't exist or user not in the chat so should not see any messages)
+      test("Bad chat id", async () => {
+        const res = await request(app)
+          .get(`${chatRoute}/a/message`)
+          .set("Accept", "application/json")
+          .set("Authorization", user1BearerToken);
+
+        expect(res.status).toEqual(400);
+
+        expect(res.body.message).toEqual(STD_VALIDATION_MSG);
+        expect(res.body.data).toBeDefined();
+        expect(res.body.data.length).toBeGreaterThan(0);
+        expect(res.body.data[0].msg).toEqual("chat id must be a number");
+      });
+      test("Nonexistant chat id", async () => {
+        const res = await request(app)
+          .get(`${chatRoute}/10000/message`)
+          .set("Accept", "application/json")
+          .set("Authorization", user1BearerToken);
+
+        expect(res.status).toEqual(400);
+
+        expect(res.body.message).toEqual(STD_VALIDATION_MSG);
+        expect(res.body.data).toBeDefined();
+        expect(res.body.data.length).toBeGreaterThan(0);
+        expect(res.body.data[0].msg).toEqual(
+          "Insufficient authorization for this action.",
+        );
+      });
+      // test with a blank chat
+      test("Blank Chat - appy Path", async () => {
+        const res = await request(app)
+          .get(`${chatRoute}/${chatId2}/message`)
+          .set("Accept", "application/json")
+          .set("Authorization", bearerToken);
+
+        expect(res.status).toEqual(200);
+        expect(res.body.data).toBeDefined();
+        expect(res.body.data.length).toEqual(0); //0 messages retrieved
+      });
+
+      test("Get Messages After Delete", async () => {
+        const res = await request(app)
+          .get(`${chatRoute}/${chatId1}/message`)
+          .set("Accept", "application/json")
+          .set("Authorization", user1BearerToken);
+
+        expect(res.status).toEqual(200);
+        expect(res.body.data).toBeDefined();
+        expect(res.body.data.length).toEqual(5); //5 messages initially retrieved
+
+        const delRes = await request(app)
+          .delete(`${messageRoute}/2`)
+          .set("Accept", "application/json")
+          .set("Authorization", bearerToken);
+
+        expect(delRes.status).toEqual(204);
+
+        const res2 = await request(app)
+          .get(`${chatRoute}/${chatId1}/message`)
+          .set("Accept", "application/json")
+          .set("Authorization", user1BearerToken);
+
+        expect(res2.status).toEqual(200);
+
+        expect(res2.body.data).toBeDefined();
+        expect(res2.body.data.length).toEqual(4); //4 messages initially retrieved
+      });
+
+      test("5 Msgs - Happy Path", async () => {
+        const res = await request(app)
+          .get(`${chatRoute}/${chatId1}/message`)
+          .set("Accept", "application/json")
+          .set("Authorization", user1BearerToken);
+
+        expect(res.status).toEqual(200);
+        expect(res.body.data).toBeDefined();
+        expect(res.body.data.length).toEqual(5); //5 messages retrieved
+      });
+
+      // test deleting a message that doesn't belong to the user (who is in the same chat though)
+      //
+      
+      test("Delete someone else's message", async () => {
+        const delRes = await request(app)
+          .delete(`${messageRoute}/5`)
+          .set("Accept", "application/json")
+          .set("Authorization", bearerToken);
+
+        expect(delRes.status).toEqual(400);
+
+        expect(delRes.body.message).toEqual(STD_VALIDATION_MSG);
+        expect(delRes.body.data).toBeDefined();
+        expect(delRes.body.data.length).toBeGreaterThan(0);
+        expect(delRes.body.data[0].msg).toEqual(
+          "Failed to find this message or invalid id.",
+        );
+      });
+    });
+  })
   
   // test setting up a chat with another user
   describe("Add New Chat tests", () => {

@@ -16,6 +16,7 @@ export const checkChatId = (isParam, name="id") => {
   .notEmpty()
   .withMessage("A chat id is required to complete the request.")
   .bail()
+  .isInt({ min: 1 }).withMessage("chat id must be a number").bail()
   .toInt()
   .custom(async (value, {req}) => {
     logger.info(`try to validate if the authenticated user ${req.user.id} belongs to this chat: ${value}`);

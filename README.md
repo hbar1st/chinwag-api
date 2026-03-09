@@ -65,9 +65,9 @@ Once phase 1 is done, contributions may be accepted if an issue is opened and tr
 - [x] POST /chat [creates a new chat with a person - in the form: the recipient's id. Messages come later. Only runs if we don't have an ongoing chat already]
 - [x] GET /chat/:id [returns top level data like desc - not messages. Use GET /chat/:id/message to get the messages. Returns 204 if user is no longer in the chat]
 - [x] POST /chat/:id/message [adds more messages to the same chat]
-- [] GET /chat/:id/message [gets all the messages in a chat but paginated backwards chronologically (most recent is visible but to scroll up we may have to load more? set a 20 message limit)]
+- [x] GET /chat/:id/message [gets all the messages in a chat]
 - [] PUT /message/:id [to edit an existing message. Can change the message or the image(s). Can also be used to set the time the user read the message.]
-- [] DELETE /message/:id [can delete one's own message. IF it is a REPLY, then the form will include a reply field with replied to message's id]
+- [] DELETE /message/:id [can delete one's own message. if a message is deleted which was replied to, the replied_to field will point at nothing valid so will show 'deleted' in the client? ]
 - [x] GET /chat [gets all chat for the current user including unread message counts]
 - [x] DELETE /chat/:id  [deletes a specific chat but only if this is the last member in the chat to leave. Otherwise, just marks the auth user as having left the chat.]
 - [] GET /chat/:id/message/unread_count [is a count of every single message this user got sent filtered to the ones that are unread in the specified chat]
@@ -81,5 +81,7 @@ GET /user/:id/friend [lists all the friends and their last active timestamps so 
 - [ ] Allow group chats between friends
 
 ## Beyond the Bonus Functionality
-- [ ] Archive chats
-- [ ] Block users
+- [] allow adding / removing reactions
+- [] allow listing reactions
+- [] Archive chats
+- [] Block users
