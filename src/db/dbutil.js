@@ -35,6 +35,31 @@ export async function clearAllTables() {
   return true;
 }
 
+
+/**
+ * Clears only chat-related tables for test usage
+ * 
+ * @returns 
+ */
+export async function clearChatTables() {
+  const tables = [
+    'chinwag.messages_meta',
+    'chinwag.messages',
+    'chinwag.chat_members',
+    'chinwag.chats',
+  ];
+  
+  try {
+    for (const table of tables) {
+      await pool.query(`TRUNCATE TABLE ${table} RESTART IDENTITY CASCADE;`);
+    }
+  } catch (error) {
+    logger.error("failed to clear chat tables: ", { error });
+  }
+
+  return true;
+}
+
 /**
  * if you need to test this file, uncomment the code below
  * then run the following command to load .env on command line as you run the file

@@ -8,11 +8,12 @@ import {
   beforeAll,
   afterAll,
   beforeEach,
-  vi
+  vi,
 } from "vitest";
 import request from "supertest";
 import { logger } from "../src/utils/logger.js";
 import { pool } from "../src/db/pool.js";
+
 vi.mock("cloudinary", () => {
   const upload_stream = vi.fn();
   
@@ -62,10 +63,9 @@ vi.mock("cloudinary", () => {
   };
 });
 
-
 import Image from "../src/utils/Image.js";
 
-import { clearAllTables } from "../src/db/dbutil.js";
+import { clearAllTables, clearChatTables } from "../src/db/dbutil.js";
 
 const STD_VALIDATION_MSG = "Action has failed due to some validation errors";
 let app;
@@ -74,6 +74,7 @@ let user;
 let chatRoute;
 let userRoute;
 let bearerToken;
+let user1BearerToken;
 
 const password = "password";
 const testUser = {
@@ -102,59 +103,75 @@ const chatUser2 = {
 
 // setup some users and the currently authenticated user
 beforeAll(async () => {
-  
+  // Clear all tables to start with a clean slate
   await clearAllTables();
   const mod = await import("../src/serverSetup.js");
   app = mod.app;
   prefix = mod.prefix;
   chatRoute = `${prefix}/chat`;
-  userRoute = `${prefix}/user`
+  userRoute = `${prefix}/user`;
   
   await Image.deleteAll();
   
   //signup first user (who will be the authenticated user throughout these tests)
-  let res = await request(app)
+  const res1 = await request(app)
   .post(`${userRoute}/signup`)
   .set("Accept", "application/json")
   .send(testUser);
   
-  expect(res.headers["content-type"]).toMatch(/json/);
-  expect(res.status).toEqual(201);
-  logger.info("the signed in user: ", res.body.data);
-  user = res.body.data;
+  expect(res1.headers["content-type"]).toMatch(/json/);
+  expect(res1.status).toEqual(201);
+  logger.info("the signed in user: ", res1.body.data);
+  user = res1.body.data;
+  
+  testUser.id = res1.body.data.id;
+  
   // then login to get the jwt header
-  res = await request(app)
+  const res2 = await request(app)
   .post(`${userRoute}/login`)
   .set("Accept", "application/json")
   .send({ username: testUser.username, password: password });
   
-  expect(res.headers["content-type"]).toMatch(/json/);
-  expect(res.status).toEqual(200);
+  expect(res2.headers["content-type"]).toMatch(/json/);
+  expect(res2.status).toEqual(200);
   
-  bearerToken = res.headers.authorization;
+  bearerToken = res2.headers.authorization;
   
   // signup another user to conduct a chat with
-  res = await request(app)
+  const res3 = await request(app)
   .post(`${userRoute}/signup`)
   .set("Accept", "application/json")
   .send(chatUser1);
   
-  chatUser1.id = res.body.data.id;
+  chatUser1.id = res3.body.data.id;
   
-  expect(res.headers["content-type"]).toMatch(/json/);
-  expect(res.status).toEqual(201);
+  expect(res3.headers["content-type"]).toMatch(/json/);
+  expect(res3.status).toEqual(201);
+  
   // signup a third user for other chat tests
-  res = await request(app)
+  const res4 = await request(app)
   .post(`${userRoute}/signup`)
   .set("Accept", "application/json")
   .send(chatUser2);
   
-  expect(res.headers["content-type"]).toMatch(/json/);
-  expect(res.status).toEqual(201);
-  chatUser2.id = res.body.data.id;
+  expect(res4.headers["content-type"]).toMatch(/json/);
+  expect(res4.status).toEqual(201);
+  chatUser2.id = res4.body.data.id;
+  
+  // second user login to get another jwt header
+  const loginRes = await request(app)
+  .post(`${userRoute}/login`)
+  .set("Accept", "application/json")
+  .send({ username: chatUser1.username, password: password });
+  
+  expect(loginRes.headers["content-type"]).toMatch(/json/);
+  expect(loginRes.status).toEqual(200);
+  
+  user1BearerToken = loginRes.headers.authorization;
 });
 
 afterAll(async () => {
+  // Clean up test data
   await clearAllTables();
   
   await Image.deleteAll();
@@ -193,7 +210,14 @@ describe("chat tests", () => {
         .set("Accept", "application/json")
         .set("Authorization", bearerToken);
         
-        expect(res.status).toEqual(404);
+        expect(res.status).toEqual(400);
+        
+        expect(res.body.message).toEqual(STD_VALIDATION_MSG);
+        expect(res.body.data).toBeDefined();
+        expect(res.body.data.length).toBeGreaterThan(0);
+        expect(res.body.data[0].msg).toEqual(
+          "Insufficient authorization for this action.",
+        );
       });
       
       describe("Ongoing Chat Tests", () => {
@@ -219,48 +243,54 @@ describe("chat tests", () => {
           expect(res2.status).toEqual(201);
           chat2_id = res2.body.data.id;
         });
+        
         afterEach(async () => {
-          await clearAllTables();
+          await clearChatTables();
+        });
+        
+        // test leaving a chat when the auth user is not a member (should fail)
+        test("Non-Member Leave A Chat", async () => {
+          const res = await request(app)
+          .delete(`${chatRoute}/${chat2_id}`)
+          .set("Accept", "application/json")
+          .set("Authorization", user1BearerToken);
+          
+          expect(res.status).toEqual(400);
+          
+          expect(res.body.message).toEqual(STD_VALIDATION_MSG);
+          expect(res.body.data).toBeDefined();
+          expect(res.body.data.length).toBeGreaterThan(0);
+          expect(res.body.data[0].msg).toEqual(
+            "Insufficient authorization for this action.",
+          );
         });
         
         // test leaving a chat (leaving a chat should mean that a GET /chat should return the ongoing chats minus this one we left)
-        test("Leave A Chat", async () => {
+        test("Member Leave A Chat", async () => {
           const res = await request(app)
-            .delete(`${chatRoute}/${chat2_id}`)
-            .set("Accept", "application/json")
-            .set("Authorization", bearerToken);
-
+          .delete(`${chatRoute}/${chat2_id}`)
+          .set("Accept", "application/json")
+          .set("Authorization", bearerToken);
+          
           expect(res.status).toEqual(204);
           
           const resCheck = await request(app)
-            .get(`${chatRoute}`)
-            .set("Accept", "application/json")
-            .set("Authorization", bearerToken);
-
+          .get(`${chatRoute}`)
+          .set("Accept", "application/json")
+          .set("Authorization", bearerToken);
+          
           expect(resCheck.status).toEqual(200);
-          expect(resCheck.body.data.length).toEqual(1)
-
+          expect(resCheck.body.data.length).toEqual(1);
+          
           // try to get the chat we left, should not work
           const findChatRes = await request(app)
-            .get(`${chatRoute}/${chat2_id}`)
-            .set("Accept", "application/json")
-            .set("Authorization", bearerToken);
-
-          expect(findChatRes.status).toEqual(204); //no results
-        });
-
-        // test getting a specific chat by id if an ongoing chat exists (and auth user is an active member vs one who has left)
-        // (top level info only like name of person we are talking to and the count of new messages if any)
-        /* may not need this actually
-        test("Get Chat By Id", async () => {
-          const res = await request(app)
           .get(`${chatRoute}/${chat2_id}`)
           .set("Accept", "application/json")
           .set("Authorization", bearerToken);
           
-          expect(res.status).toEqual(201);
+          expect(findChatRes.status).toEqual(204); //no results
         });
-        */
+        
         // test getting a list of all ongoing chats when there are some defined but all have zero new messages
         test("Get All Chats ", async () => {
           const res = await request(app)
@@ -287,9 +317,8 @@ describe("chat tests", () => {
         });
       });
     });
-    
   });
-
+  
   // test setting up a chat with another user
   describe("Add New Chat tests", () => {
     // unauthorized user tries to make a new chat
@@ -346,7 +375,9 @@ describe("chat tests", () => {
         expect(res.body.message).toEqual(STD_VALIDATION_MSG);
         expect(res.body.data).toBeDefined();
         expect(res.body.data.length).toBeGreaterThan(0);
-        expect(res.body.data[0].msg).toEqual("Invalid value");
+        expect(res.body.data[0].msg).toEqual(
+          "Chat should be with another person.",
+        );
       });
       
       // authorized user tries to chat but there is no body fields
@@ -364,7 +395,7 @@ describe("chat tests", () => {
           "A user id is required to complete the request.",
         );
       });
-      // authorized user tries to make a new chat with a valid user (by id) which is not the authenticated user id
+      
       test("Happy Path", async () => {
         const res = await request(app)
         .post(`${chatRoute}`)
@@ -394,9 +425,11 @@ describe("chat tests", () => {
   // test adding a message into a chat (no images)
   describe("Add New Message tests", () => {
     let chatId1 = 0; //between testUser and chatUser1
-    //let chatId2 = 0; //between testUser and chatUser2
+    let chatId2 = 0; //between testUser and chatUser2
     
     beforeEach(async () => {
+      // Ensure chats are properly cleaned before each test
+      await clearChatTables();
       const res = await request(app)
       .post(`${chatRoute}`)
       .set("Accept", "application/json")
@@ -413,11 +446,11 @@ describe("chat tests", () => {
       .send({ user_id: chatUser2.id });
       
       expect(res2.status).toEqual(201);
-      //chatId2 = res2.body.data.id;
+      chatId2 = res2.body.data.id;
     });
     
     afterEach(async () => {
-      await clearAllTables();
+      await clearChatTables();
     });
     
     // unauthorized user tries to make a new message
@@ -428,14 +461,172 @@ describe("chat tests", () => {
       
       expect(res.status).toEqual(401);
     });
-    //describe("Authorized User", () => {});
+    
+    describe("Authorized User", () => {
+      const message = "The first message test.";
+      
+      // try to send a message to a chat that the user left (should be allowed)
+      test("Send message to chat user left earlier", async () => {
+        
+        const deleteRes = await request(app)
+        .delete(`${chatRoute}/${chatId1}`)
+        .set("Accept", "application/json")
+        .set("Authorization", bearerToken);
+        
+        expect(deleteRes.status).toEqual(204);
+        
+        // list of chats should not include chatId1
+        let getRes = await request(app)
+        .get(`${chatRoute}`)
+        .set("Accept", "application/json")
+        .set("Authorization", bearerToken);
+        
+        expect(getRes.status).toEqual(200);
+        expect(getRes.body.data.length).toBe(1);
+        expect(getRes.body.data[0].chat_id).toEqual(chatId2);
+        
+        const res = await request(app)
+        .post(`${chatRoute}/${chatId1}/message`)
+        .set("Accept", "application/json")
+        .set("Authorization", bearerToken)
+        .send({ content: "Sorry I left before." });
+        
+        expect(res.status).toEqual(201);
+        
+        expect(res.body.data).toBeDefined();
+        expect(res.body.data).toEqual({
+          author_id: testUser.id,
+          chat_id: chatId1,
+          content: "Sorry I left before.",
+          id: 1,
+          reply_to: null,
+        });
+        
+        // check list of chats now includes chatId1
+        getRes = await request(app)
+        .get(`${chatRoute}`)
+        .set("Accept", "application/json")
+        .set("Authorization", bearerToken);
+        
+        expect(getRes.status).toEqual(200);
+        expect(getRes.body.data.length).toBe(2);
+      });
+      
+      // send a blank message in a chat
+      test("Send blank message", async () => {
+        const res = await request(app)
+        .post(`${chatRoute}/${chatId1}/message`)
+        .set("Accept", "application/json")
+        .set("Authorization", bearerToken)
+        .send({ content: "" });
+        
+        expect(res.status).toEqual(400);
+        
+        expect(res.body.message).toEqual(STD_VALIDATION_MSG);
+        expect(res.body.data).toBeDefined();
+        expect(res.body.data.length).toBeGreaterThan(0);
+        expect(res.body.data[0].msg).toEqual("Message must not be blank.");
+      });
+      
+      //send bad language in content
+      test("Send bad message", async () => {
+        const res = await request(app)
+        .post(`${chatRoute}/${chatId1}/message`)
+        .set("Accept", "application/json")
+        .set("Authorization", bearerToken)
+        .send({ content: "excuse this fucking test" });
+        
+        expect(res.status).toEqual(400);
+        
+        expect(res.body.message).toEqual(STD_VALIDATION_MSG);
+        expect(res.body.data).toBeDefined();
+        expect(res.body.data.length).toBeGreaterThan(0);
+        expect(res.body.data[0].msg).toEqual('Captain America: "Language!"');
+      });
+      
+      //send overly long content
+      test("Send long message", async () => {
+        const res = await request(app)
+        .post(`${chatRoute}/${chatId1}/message`)
+        .set("Accept", "application/json")
+        .set("Authorization", bearerToken)
+        .send({ content: "words ".repeat(200) });
+        
+        expect(res.status).toEqual(400);
+        
+        expect(res.body.message).toEqual(STD_VALIDATION_MSG);
+        expect(res.body.data).toBeDefined();
+        expect(res.body.data.length).toBeGreaterThan(0);
+        expect(res.body.data[0].msg).toEqual(
+          "Message exceeded max 1000 character length.",
+        );
+      });
+      
+      // send a message in a chat
+      test("Send message", async () => {
+        // get the current last active time for the user to compare after the message is sent
+        // get the current list of new messages (should be zero)
+        let unreadRes = await request(app)
+        .get(`${chatRoute}`)
+        .set("Accept", "application/json")
+        .set("Authorization", user1BearerToken);
+        
+        expect(unreadRes.status).toEqual(200);
+        expect(unreadRes.body.data.length).toBe(1);
+        expect(unreadRes.body).toEqual({
+          data: expect.arrayContaining([
+            {
+              chat_id: chatId1,
+              icon_id: null,
+              descr: null,
+              count: 0,
+            },
+          ]),
+        });
+        
+        const res = await request(app)
+        .post(`${chatRoute}/${chatId1}/message`)
+        .set("Accept", "application/json")
+        .set("Authorization", bearerToken)
+        .send({ content: message });
+        
+        expect(res.status).toEqual(201);
+        expect(res.body.data).toEqual({
+          author_id: 1,
+          chat_id: chatId1,
+          content: message,
+          id: 1,
+          reply_to: null,
+        });
+        
+        //check activity table got updated
+        // get the current list of new messages (should be zero)
+        unreadRes = await request(app)
+        .get(`${chatRoute}`)
+        .set("Accept", "application/json")
+        .set("Authorization", user1BearerToken);
+        
+        expect(unreadRes.status).toEqual(200);
+        expect(unreadRes.body.data.length).toBe(1);
+        expect(unreadRes.body).toEqual({
+          data: expect.arrayContaining([
+            {
+              chat_id: chatId1,
+              icon_id: null,
+              descr: null,
+              count: 1,
+            },
+          ]),
+        });
+      });
+    });
   });
+  
+  // send a reply in a chat
   // test getting the specific chat's messages (possibly paginated but in reverse chronological order) as a member of the chat
   // test getting a specific chat's messages as unauthorized user
-  // test getting a specific chat's messages as an authorized user who has never been a member of the chat
   
   // test getting a list of all ongoing chats when there are some defined with some having new message counts
-  
   
   // test editing a specific message's contents (does this update the chronology of the chat display? leave it to client to decide)
   // test deleting a specific message

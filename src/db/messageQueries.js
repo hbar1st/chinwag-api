@@ -60,7 +60,8 @@ export async function addMessage(author_id, chat_id, content, reply_to=null) {
       WHERE chat_id = $1 AND has_left = FALSE AND user_id <> $2;`, [chat_id, author_id]
     );
 
-    logger.info("message recipients list: ",recipients.rows)
+    logger.info("message recipients list: ", recipients.rows)
+    /*
     for (const recipient of recipients.rows) {
       // create a meta record for each intended recipient to keep track of when they read the message
 
@@ -69,6 +70,7 @@ export async function addMessage(author_id, chat_id, content, reply_to=null) {
         , [rows[0].id, recipient.user_id]
       )
     }
+    */
     await client.query("SAVEPOINT sp1");
 
     // Activity update — failure should NOT rollback the transaction

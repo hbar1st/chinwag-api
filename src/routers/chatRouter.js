@@ -29,10 +29,14 @@ chatRouter
 // if the auth user is not a member of the chat, the validation should fail
 chatRouter
   .route("/:id/message")
-  .post(passport.authenticate("jwt", { session: false }),
+  .post(
+    passport.authenticate("jwt", { session: false }),
     chatValidator.validateChatMembership,
     handleExpressValidationErrors,
-  chatController.addMessage);
+    chatValidator.validateMessage,
+    handleExpressValidationErrors,
+    chatController.addMessage,
+  );
 
     
 chatRouter

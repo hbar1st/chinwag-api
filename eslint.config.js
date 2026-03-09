@@ -1,11 +1,19 @@
 import js from "@eslint/js";
 import globals from "globals";
+import promise from "eslint-plugin-promise";
+
 
 export default [
   // 1. Inherit the recommended JavaScript rules
   js.configs.recommended,
 
   {
+    plugins: {
+      promise: {
+        rules: promise.rules,
+      },
+    },
+
     // 2. Target your backend files
     files: ["**/*.{js,mjs,cjs}"],
     languageOptions: {
@@ -18,9 +26,10 @@ export default [
     },
     rules: {
       // 3. Add backend-specific preferences
-      "no-console": "warn",        // servers need debug logs
-      "no-unused-vars": "error",   // Keeps your API clean
-      "prefer-const": "error",     // Encourages immutable data patterns
+      "no-console": "warn", // servers need debug logs
+      "no-unused-vars": "error", // Keeps your API clean
+      "prefer-const": "error", // Encourages immutable data patterns
+      "promise/prefer-await-to-then": "error",
     },
   },
 

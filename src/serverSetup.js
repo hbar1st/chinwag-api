@@ -69,7 +69,7 @@ async function setupCloudinary() {
   logger.info(cloudinary.config());
 }
 
-setupCloudinary();
+await setupCloudinary();
 
 // show all files in public folder
 
