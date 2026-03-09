@@ -31,7 +31,7 @@ export async function getChatMessages(req, res) {
   
   const data = matchedData(req);
   try {
-    const messages = await chatQueries.getMessages(data.id);
+    const messages = await chatQueries.getChatMessages(data.id);
     res.status(200).json({ data: messages })
   } catch (error) {
     if (error instanceof AppError) {
@@ -45,7 +45,7 @@ export async function getChatMessages(req, res) {
 export async function leaveChat(req, res) {  
   try {
     const user = req.user;
-
+    
     const data = matchedData(req);
     // the chat will only get removed if this is the last user to leave
     // if the case of group chats, we would want the chat to be deleted if this is the last admin to leave
@@ -67,7 +67,7 @@ export async function leaveChat(req, res) {
 export async function getChat(req, res) {
   try {
     const user = req.user;
-
+    
     const data = matchedData(req);
     
     const rows = await chatQueries.getChat(data.id, user.id);
@@ -84,12 +84,18 @@ export async function getChat(req, res) {
 }
 export async function addMessage(req, res) {
   try {
-    res.status(200).end(); //temporary
+    const user = req.user;
+    const chat_id = req.params.id;
+    const {content} = matchedData(req);
+    
+    const rows = await chatQueries.addMessage(user.id, chat_id, content);
+    
+    res.status(201).json({ data: rows });
   } catch (error) {
     if (error instanceof AppError) {
       throw error;
     } else {
-      throw new AppError("Failed to get a list of chats -", 500, error);
+      throw new AppError("Failed to get post a message -", 500, error);
     }
   }
 }

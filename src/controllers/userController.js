@@ -204,7 +204,7 @@ export async function uploadProfileImage(req, res) {
          // await userQueries.removeOldImage(userProfile.avatar_id)
         } catch (err) {
           
-          Image.deleteImage(userRow.public_id); //clean up cloudinary in case this doesn't work
+          await Image.deleteImage(userRow.public_id); //clean up cloudinary in case this doesn't work
           if (err instanceof AppError) {
             throw err;
           } else {
@@ -221,11 +221,11 @@ export async function uploadProfileImage(req, res) {
           "have to clean up cloudinary because the query failed: ",
           userRow,
         );
-        Image.deleteImage(uploadResult.public_id); //clean up cloudinary in case this doesn't work
+        await Image.deleteImage(uploadResult.public_id); //clean up cloudinary in case this doesn't work
         throw new AppError("Failed to upload a profile image");
       }
     } catch (error) {
-      Image.deleteImage(uploadResult.public_id); //clean up cloudinary in case this doesn't work
+      await Image.deleteImage(uploadResult.public_id); //clean up cloudinary in case this doesn't work
       if (error instanceof AppError) {
         throw error;
       } else {

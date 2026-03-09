@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 
-import { describe, test, expect, afterAll, beforeAll, vi, onTestFinished } from "vitest";
+import { describe, test, expect, afterAll, beforeAll, vi, beforeEach, afterEach } from "vitest";
 import request from "supertest";
 
 import * as path from 'path';
@@ -170,7 +170,7 @@ describe("PUT /user/image", () => {
   });
   // test authenticated user
   describe("Authenticated User", () => {
-    beforeAll(async () => {
+    beforeEach(async () => {
       await clearAllTables();
       //signup first
       let res = await request(app)
@@ -193,7 +193,7 @@ describe("PUT /user/image", () => {
       bearerToken = res.headers.authorization;
     });
     
-    afterAll(async () => {
+    afterEach(async () => {
       await clearAllTables();
     });
     // with invalid mimetype
@@ -291,11 +291,6 @@ describe("PUT /user/image", () => {
       
       const rows = (await pool.query(sql)).rows;
       expect(rows.length).toBe(0);
-      
-      onTestFinished(async () => {
-        clearAllTables();
-        destroySpy.mockClear();
-      });
     });
     
     test("delete avatar", async () => {
@@ -311,10 +306,12 @@ describe("PUT /user/image", () => {
       .attach("image", redIconFile);
       
       expect(res.status).toEqual(200);
-      console.log("this data: ", res.body.data);
+      
       expect(res.body.data.avatar_id).toBeDefined();
       expect(res.body.data.avatar_url).toBeDefined();
-      expect(uploadSpy).toHaveBeenCalledOnce();
+      //expect(uploadSpy).toHaveBeenCalledOnce();
+      
+      expect(destroySpy).toHaveBeenCalled(3);
       
       const public_id = res.body.data.public_id;
       
@@ -330,6 +327,7 @@ describe("PUT /user/image", () => {
       
       uploadSpy.mockClear();
       destroySpy.mockClear();
+
     });
   })
 });

@@ -123,6 +123,23 @@ CREATE TABLE chinwag.chat_admins (
   PRIMARY KEY (chat_id,user_id)
 );
 
+CREATE FUNCTION chinwag.update_messages_meta()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $MAKE_META$
+BEGIN
+  INSERT INTO chinwag.messages_meta (message_id, recipient_id)
+  SELECT NEW.id, cm.user_id
+  FROM chinwag.chat_members cm
+  WHERE cm.chat_id = NEW.chat_id
+    AND cm.user_id <> NEW.author_id
+  ON CONFLICT (message_id, recipient_id) DO NOTHING;
+
+
+  RETURN NEW;
+END;
+$MAKE_META$;
+
 CREATE FUNCTION chinwag.getUnreadMsgCounts(iUserId integer)
 RETURNS TABLE(chat_id integer, icon_id integer, descr text, count integer)
 LANGUAGE sql
@@ -146,3 +163,10 @@ AS $unreads$
   GROUP BY cm.chat_id, chats.icon_id, chats.descr
   ORDER BY cm.chat_id;
 $unreads$;
+
+
+
+CREATE TRIGGER insert_message 
+  AFTER INSERT ON chinwag.messages
+  FOR EACH ROW
+  EXECUTE FUNCTION chinwag.update_messages_meta();
