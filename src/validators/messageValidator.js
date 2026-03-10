@@ -11,11 +11,9 @@ const checkMessageId = () => {
   .isInt({ min: 1 }).withMessage("Message id must be a number.").bail()
   .toInt()
   .custom(async (value, {req}) => {
-    // check if the auth user owns the message being deleted or modified
-    
+    // check if the auth user owns the message being deleted or modified    
     try {
       const msgRow = await messageQueries.getMessage(value, req.user.id);
-
       if (msgRow) return true;
       throw new ValidationError("Failed to find this message or invalid id.");
     } catch (error) {

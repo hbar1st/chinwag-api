@@ -145,7 +145,6 @@ export async function getChats(user_id) {
     `SELECT * FROM chinwag.getUnreadMsgCounts($1)`,
     [user_id],
   );
-  console.log("*****", rows)
   return rows;
 }
 

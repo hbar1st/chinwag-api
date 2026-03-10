@@ -25,9 +25,9 @@ services:
       POSTGRES_PASSWORD: ${PGPASSWORD}
       POSTGRES_DB: ${PGDATABASE_TEST}
     ports:
-      - "${PGPORT_TEST}:${PGPORT_TEST}"   # test DB runs on a different port
+      - "${PGPORT_TEST}:${PGPORT_TEST}"
     volumes:
-      - /var/lib/postgresql/data
+      - pgdata_test:/var/lib/postgresql/data
     networks:
       - chinwag_net
 
