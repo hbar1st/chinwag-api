@@ -82,6 +82,22 @@ export async function getChat(req, res) {
     }
   }
 }
+
+export async function getMessages(req, res) {
+  try {
+    const chat_id = req.params.id;
+
+    const rows = await chatQueries.getChatMessages(chat_id);
+
+    res.status(200).json({ data: rows });
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    } else {
+      throw new AppError("Failed to get the chat messages -", 500, error);
+    }
+  }
+}
 export async function addMessage(req, res) {
   try {
     const user = req.user;

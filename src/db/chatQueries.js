@@ -17,7 +17,7 @@ export async function getChatMessages(chat_id) {
       [chat_id],
     );
 
-    return { rows };
+    return rows;
   } catch (error) {
     logger.error("Get chat messages & update activity failed:", error);
     throw error;
