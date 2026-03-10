@@ -123,6 +123,33 @@ CREATE TABLE chinwag.chat_admins (
   PRIMARY KEY (chat_id,user_id)
 );
 
+CREATE OR REPLACE VIEW chinwag.chat_participants AS
+SELECT
+  c.id AS chat_id,
+  c.icon_id,
+  c.name,
+  c.descr,
+  c.created_at,
+  c.updated_at,
+  m.user_id as id,
+  m.has_left AS has_left,
+  u.username,
+  u.nickname,
+  u.avatar_id,
+  CASE
+    WHEN a.user_id IS NOT NULL THEN TRUE
+    ELSE FALSE
+  END AS is_admin
+FROM chinwag.chats AS c
+JOIN chinwag.chat_members AS m
+  ON m.chat_id = c.id
+JOIN chinwag.users AS u
+  ON u.id = m.user_id
+LEFT JOIN chinwag.chat_admins AS a
+  ON a.chat_id = c.id
+ AND a.user_id = m.user_id
+ORDER BY c.id, m.user_id;
+
 CREATE FUNCTION chinwag.update_messages_meta()
 RETURNS TRIGGER
 LANGUAGE plpgsql

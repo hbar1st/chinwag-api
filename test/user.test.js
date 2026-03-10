@@ -16,10 +16,10 @@ import request from "supertest";
 import Image from "../src/utils/Image.js"
 import { logger } from "../src/utils/logger.js";
 import { pool } from "../src/db/pool.js";
+import { STD_VALIDATION_MSG } from "../src/errors/ValidationError.js";
 
 import { clearAllTables } from "../src/db/dbutil.js";
 
-const STD_VALIDATION_MSG = "Action has failed due to some validation errors";
 let app;
 let prefix;
 let route;
