@@ -4,6 +4,11 @@
 !!! before running this code, we need to create the tables from setup-tables.sql !!! (npm run db:setup will do that)
 */
 
+import "dotenv/config";
+import { env } from "node:process";
+
+import { pool } from "./pool.js";
+
 import AppError from "../errors/AppError.js";
 
 import * as userQueries from "../db/userQueries.js";
@@ -15,8 +20,16 @@ import * as messageQueries from "../db/messageQueries.js";
 // needed to hash the password value
 import bcrypt from "bcrypt";
 
-import "dotenv/config";
-import { env } from "node:process";
+import fs from "fs";
+import path from "path";
+
+async function setupTables() {
+  const absolutePath = path.resolve("./src/db/setup-tables.sql");
+  const sql = fs.readFileSync(absolutePath, "utf8");
+  await pool.query(sql);
+}
+
+
 // setup data in all the tables to facilitate development work
 
 async function hashPwd(pwd) {
@@ -156,8 +169,19 @@ async function createChatsNMessages() {
 }
 
 async function populateTables() {
+  console.log("Testing DB connection...");
+
+  try {
+    const test = await pool.query("SELECT NOW()");
+    console.log("Connected to DB:", test.rows[0]);
+  } catch (err) {
+    console.error("DB connection failed:", err);
+    process.exit(1);
+  }
+
   await createUsersNPasswords();
   await createChatsNMessages();
 }
 
+await setupTables();
 await populateTables();
