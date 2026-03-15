@@ -5,12 +5,15 @@ import { logger} from "../utils/logger.js";
 //const DATABASE_URL = `postgresql://${env.PGUSER}:${env.PGPASSWORD}@${env.PGHOST}:${env.PGPORT}/${env.PGDATABASE}`;
 
 
-// Add logging to see what's happening
-logger.info("Environment check in db/init.ts:", {
-  NODE_ENV: env.NODE_ENV,
-  DATABASE_URL: env.DATABASE_URL ? "EXISTS" : "MISSING",
-  DATABASE_URL_length: env.DATABASE_URL?.length,
-});
+// Add logging to see what's happening in production
+if (env.NODE_ENV === "production") {
+  logger.info("Environment check in db/init.ts:", {
+    NODE_ENV: env.NODE_ENV,
+    DATABASE_URL: env.DATABASE_URL ? "EXISTS" : "MISSING",
+    DATABASE_URL_length: env.DATABASE_URL?.length,
+    DB_CA_CERT_READY: env.DB_CA_CERT ? "found certificate in DB_CA_CERT" : "missing db certificate secret DB_CA_CERT"
+  });
+}
 
 const dbConfig =
 env.NODE_ENV === "production"
@@ -18,7 +21,10 @@ env.NODE_ENV === "production"
   // Note for deployment on Railway, these environment variables need to be shared from the database service into the nodejs app block
   // this is a manual process that must be done in the Railway dashboard (via their gui)
   connectionString: env.DATABASE_URL,
-  ssl: { require: true, rejectUnauthorized: false },
+  ssl: {
+    ca: process.env.DB_CA_CERT,    
+    rejectUnauthorized: true
+  }
 }
 : (env.NODE_ENV === "test")
 ? {
