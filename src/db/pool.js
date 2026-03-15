@@ -36,5 +36,10 @@ env.NODE_ENV === "production"
   port: env.PGPORT,
 };
 
-logger.info("dbConfig: ",dbConfig)
+if (dbConfig === {}) {
+  logger.error("pg pool dbConfig should not be empty!!!")
+  logger.info("env.NODE_ENV =", env.NODE_ENV)
+} else {
+  logger.info("pg pool dbConfig: ", dbConfig)
+}
 export const pool = new Pool(dbConfig);

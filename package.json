@@ -25,7 +25,7 @@
     "db:shell": "bash -c 'source .env &&  docker compose exec db psql -U \"$PGUSER\" -d \"$PGDATABASE\"'",
     "db:setup": "bash -c 'source .env && docker compose exec -T db psql -U \"$PGUSER\" -d \"$PGDATABASE\" < ./src/db/setup-tables.sql'",
     "db:test:setup": "bash -c 'source .env.test && docker compose exec -T db psql -U \"$PGUSER\" -d \"$PGDATABASE_TEST\" < ./src/db/setup-tables.sql'",
-    "clean-n-dev": "npm run lint && npm run db:start && npm run db:setup && node src/db/populateTables.js && npm start",
+    "clean-n-dev": "npm run lint && npm run db:start && node src/db/populateTables.js && npm start",
     "clean-n-test": "npm run db:start && npm run db:setup && node src/db/populateTables.js && npm start",
     "dev": "npm run db:start && npm start",
     "test": "NODE_ENV=test vitest --mode test --silent=passed-only --disableConsoleIntercept --hideSkippedTests --bail 1",
