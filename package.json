@@ -18,6 +18,7 @@
     "start": "npx nodemon src/index.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "prod:db:reset": "bash -c 'source .env && psql \"$DATABASE_URL_CHINWAG\" -f \"src/db/setup-tables.sql\"'",
     "db:start": "docker compose -f ./docker-compose.yml up -d",
     "db:stop": "docker compose -f ./docker-compose.yml down",
     "db:logs": "docker compose -f ./docker-compose.yml logs -f db",

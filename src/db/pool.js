@@ -18,7 +18,7 @@ env.NODE_ENV === "production"
   // Note for deployment on Railway, these environment variables need to be shared from the database service into the nodejs app block
   // this is a manual process that must be done in the Railway dashboard (via their gui)
   connectionString: env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  ssl: { require: true, rejectUnauthorized: false },
 }
 : (env.NODE_ENV === "test")
 ? {
